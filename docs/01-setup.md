@@ -25,11 +25,15 @@ Your Windows drives are inside WSL under `/mnt/`: `C:\Users\you\Documents` is
 
 ## Get this starter
 
-Either clone it with git, or copy the folder into WSL. Then go into it:
+In the Ubuntu window, clone it into your home folder and go into it:
 
 ```bash
-cd ~/ps5-homebrew-starter        # wherever you put it
+git clone https://github.com/MiladRTX/ps5-homebrew-starter.git
+cd ps5-homebrew-starter
 ```
+
+Cloning inside WSL, rather than into a Windows folder, makes builds much
+faster: WSL reads its own files quicker than Windows' drives.
 
 ## Install the tools
 

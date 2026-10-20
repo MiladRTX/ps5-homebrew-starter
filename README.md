@@ -46,9 +46,11 @@ A one-minute check that you're ready:
 
 ## Quick start
 
-In WSL (or Linux), from this folder:
+In WSL (or Linux):
 
 ```bash
+git clone https://github.com/MiladRTX/ps5-homebrew-starter.git
+cd ps5-homebrew-starter
 tools/setup.sh                      # compilers + the PS5 payload SDK, once
 tools/new-app.py "My App" PPSA12345 # make it yours: name, title ID, folders (chapter 10)
 make -C payload/hello               # payload/hello/hello.elf
