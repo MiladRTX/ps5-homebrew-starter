@@ -91,6 +91,7 @@ payload/service/      the background service
 app/src/              Hello PS5's code: hello.cpp runs it, page_*.cpp are its pages
 app/sce_sys/          the app's title files: param.json, icon0.png
 app/fonts/            fonts the app draws with
+app/assets/           files the app carries: the controller button icons, and yours
 app/stubs/            link-only stubs for system functions the SDK lacks
 app/sim/              the PC simulator: the app live in a window
 app/preview/          the PC preview: pictures of chosen screens
@@ -115,6 +116,9 @@ docs/                 the guide
 - Fonts: [Inter](https://rsms.me/inter/) and [JetBrains Mono](https://www.jetbrains.com/lp/mono/),
   SIL Open Font License (licenses in `app/fonts/`).
 - Text and pictures: [stb_truetype and stb_image](https://github.com/nothings/stb) by Sean Barrett (public domain / MIT).
+- Button icons: [PS4 Buttons](https://arks.itch.io/ps4-buttons) by **Arks** (@ScissorMarks),
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), resized
+  (`app/assets/buttons/CREDITS.txt`).
 
 This starter is GPL-3.0 (see [LICENSE](LICENSE)), like the boilerplate it
 builds on. An app made from it is GPL-3.0 too: share its source when you share it.

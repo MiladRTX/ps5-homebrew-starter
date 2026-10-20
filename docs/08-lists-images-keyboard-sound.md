@@ -3,8 +3,8 @@
 Most apps soon need a few things beyond boxes and text: a list longer than the
 screen, a picture, a way to type something, and a little sound. Hello PS5 has
 all four. The **Notes** page is a list you write with the PS5's on-screen
-keyboard, the **About** page shows the app's icon, and every page clicks and
-chirps as you use it.
+keyboard, every page shows its buttons as controller icons, and every page
+clicks and chirps as you use it.
 
 ![The Notes page](images/notes.png)
 
@@ -13,6 +13,7 @@ chirps as you use it.
 | [`page_notes.cpp`](../app/src/page_notes.cpp) | the Notes page: a list that scrolls, saved in `/data` |
 | [`keyboard.hpp`](../app/src/keyboard.hpp), [`keyboard.cpp`](../app/src/keyboard.cpp) | the PS5's on-screen keyboard |
 | [`image.hpp`](../app/src/image.hpp), [`image.cpp`](../app/src/image.cpp) | pictures: PNG and JPEG, with [stb_image](https://github.com/nothings/stb) |
+| [`buttons.hpp`](../app/src/buttons.hpp), [`buttons.cpp`](../app/src/buttons.cpp) | controller button icons, and the hint lines made of them |
 | [`sound.hpp`](../app/src/sound.hpp), [`sound.cpp`](../app/src/sound.cpp) | sound effects, made in code |
 | [`app/stubs/common_dialog.c`](../app/stubs/common_dialog.c) | a stub the keyboard needs (see *A function the SDK doesn't have*) |
 
@@ -96,9 +97,38 @@ c.image(x, y, 200, 200, logo);                      // in draw()
   1920 × 1080 background is 8 MB. Keep pictures near the size you draw them.
 
 The About page draws the app's own icon, `STARTER_APP0 "/sce_sys/icon0.png"`
-(512 × 512), at 180 pixels. For your own pictures, make an **`app/assets`**
-folder and put them there: `app/build.sh` packs it into the app as
-`/app0/assets`, and the simulator and preview copy it too.
+(512 × 512), at 180 pixels.
+
+**Your own pictures go in [`app/assets`](../app/assets).** `app/build.sh` packs
+that folder into the app as `/app0/assets`, and the simulator and preview copy
+it too. That's where the button icons are.
+
+### Button icons
+
+Every page says what its buttons do with the controller's own symbols:
+
+```cpp
+#include "buttons.hpp"
+
+using namespace buttons;
+static const Hint what_does_what[] = {
+    {dpad_up, dpad_down, "choose"}, {l2, r2, "page"}, {triangle, none, "new"},
+};
+hints(c, x, y, what_does_what, 3);              // a row of icons and words
+buttons::draw(c, buttons::cross, x, y, 40);     // or one icon, 40 pixels
+```
+
+The icons are 16 PNGs in [`app/assets/buttons`](../app/assets/buttons),
+`buttons::load()` reads them once at startup, and `c.image()` draws them at
+whatever size the page asks for. They're from
+[PS4 Buttons](https://arks.itch.io/ps4-buttons) by Arks, under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/): free to use and
+share, as long as you credit Arks and say what you changed (here, resized
+from 480 to 96 pixels). `CREDITS.txt` next to them says so, and the About page
+credits them too. Keep both if you keep the icons.
+
+If an icon is missing, `buttons::draw()` writes the button's name instead, so
+the app still works without them.
 
 ## The on-screen keyboard
 

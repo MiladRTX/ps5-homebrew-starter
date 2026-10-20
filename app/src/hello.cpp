@@ -6,6 +6,7 @@
 
 #include "hello.hpp"
 
+#include "buttons.hpp"
 #include "link.hpp"
 #include "pad.hpp"
 #include "pages.hpp"
@@ -117,12 +118,7 @@ void draw_tabs(screen::Canvas &c) noexcept
     }
     int x = right - key_w - gap - static_cast<int>(total) - gap - key_w;
 
-    auto key = [&](int kx, const char *label) {
-        c.round_frame(kx, y + 8, key_w, h - 16, 8, 2, Color::line2);
-        const float w = screen::Canvas::text_width(label, Face::mono_medium, 16);
-        c.text(kx + (key_w - w) / 2, y + h / 2 + 6, label, Face::mono_medium, 16, Color::muted);
-    };
-    key(x, "L1");
+    buttons::draw(c, buttons::l1, x, y, key_w);
     x += key_w + gap;
 
     const int bar_x = x;
@@ -138,7 +134,7 @@ void draw_tabs(screen::Canvas &c) noexcept
                i == current ? Color::accent : Color::muted);
         x += w;
     }
-    key(x + gap, "R1");
+    buttons::draw(c, buttons::r1, x + gap, y, key_w);
 }
 } // namespace
 
@@ -188,8 +184,10 @@ void load() noexcept
     s.editing = -2;
     centre_box();
     notes_load();
-    // A picture to show: the app's own icon, from its sce_sys folder.
+    // Pictures: the app's own icon, from its sce_sys folder, and the button
+    // icons from assets/buttons.
     (void)image::load(STARTER_APP0 "/sce_sys/icon0.png", s.icon);
+    buttons::load();
 
     FILE *f = fopen(save_path, "r");
     if (f)

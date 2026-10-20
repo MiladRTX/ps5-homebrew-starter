@@ -83,9 +83,9 @@ console's own certificate file. Or avoid needing HTTPS in a payload at all.
 - The folder name must match `titleId` in `sce_sys/param.json`.
 - ShadowMountPlus has to be running.
 
-**"the app's fonts are missing"**
-`assets/fonts/` isn't in the app folder. Copy the whole folder the build
-made, not just `eboot.bin`.
+**"the app's fonts are missing"**, or button names instead of button icons
+`assets/fonts/` or `assets/buttons/` isn't in the app folder. Copy the whole
+folder the build made, not just `eboot.bin`.
 
 **Your changes don't show up**
 - Did you close the app before copying? Copying over an open app can leave

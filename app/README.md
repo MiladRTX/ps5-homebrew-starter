@@ -22,7 +22,8 @@ app/preview/run.sh              # its screens as PNGs on your PC
 | `src/image.*`, `src/stb_image.h` | pictures (PNG, JPEG) |
 | `src/sound.*` | sound effects, made in code |
 | `stubs/` | link-only stubs for system functions the SDK lacks (the keyboard's) |
-| `assets/` | your own files, if you make the folder: `/app0/assets` on the console |
+| `src/buttons.*` | controller button icons and the hint lines made of them |
+| `assets/` | files packed into the app as `/app0/assets`: the button icons (`assets/buttons`, by Arks, CC BY 4.0) and your own |
 | `src/link.*` | talking to the service payload |
 | `sce_sys/` | `param.json` and the icon |
 | `fonts/` | Inter and JetBrains Mono (SIL Open Font License) |

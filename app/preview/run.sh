@@ -20,7 +20,7 @@ flags=(-DSTARTER_PREVIEW -O2 -Wall -Wextra -I"$app/src" -I"$repo/payload/service
 "$cc" -std=c11 "${flags[@]}" -c "$app/src/stb_impl.c" -o "$obj/stb.o"
 # The app's .cpp files, but not main.cpp or the controller's: the preview has
 # its own main() and no controller.
-for f in font screen image keyboard sound hello link page_play page_notes page_settings page_about; do
+for f in font screen image buttons keyboard sound hello link page_play page_notes page_settings page_about; do
     "$cxx" -std=c++20 -fno-exceptions -fno-rtti "${flags[@]}" -c "$app/src/$f.cpp" -o "$obj/$f.o"
 done
 "$cxx" -std=c++20 -fno-exceptions -fno-rtti "${flags[@]}" -c "$here/preview.cpp" -o "$obj/preview.o"

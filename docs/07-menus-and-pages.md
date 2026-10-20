@@ -127,8 +127,9 @@ Say you want a **Box shape** setting, square or round:
 
 - **Always one row highlighted**, and the selection kept when you leave the
   page and come back.
-- **A line saying what the buttons do**, at the bottom. People don't guess
-  controls on a TV.
+- **A line saying what the buttons do**, at the bottom, with the controller's
+  own symbols (`buttons::hints()`, chapter 8). People don't guess controls on
+  a TV.
 - **Nothing destructive on a single press.** Resetting the box is harmless.
   Deleting something isn't: ask for a second press first. The Notes page does
   this ("Press Square again to delete").

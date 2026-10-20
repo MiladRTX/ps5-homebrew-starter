@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#include "buttons.hpp"
 #include "hello.hpp"
 #include "pad.hpp"
 #include "pages.hpp"
@@ -135,16 +136,20 @@ void play_draw(screen::Canvas &c) noexcept
     const int x = side_x + 32;
     int y = content_y + 60;
     c.text(x, y, "CONTROLS", Face::semibold, 15, Color::faint, 255, 0.08f);
-    static const char *const controls[][2] = {
-        {"D-pad / stick", "move the box"},   {"Touchpad", "drag the box"},
-        {"Cross", "send a notification"},    {"Square", "change its colour"},
-        {"Triangle", "back to the middle"},  {"L1 / R1", "switch pages"},
+    using namespace buttons;
+    static const Hint controls[] = {
+        {dpad, l_stick, "move the box"},         {touchpad, none, "drag the box"},
+        {cross, none, "send a notification"},    {square, none, "change its colour"},
+        {triangle, none, "back to the middle"},  {l1, r1, "switch pages"},
     };
-    for (const auto &line : controls)
+    y += 4;
+    for (const Hint &line : controls)
     {
-        y += 40;
-        c.text(x, y, line[0], Face::semibold, 20, Color::text);
-        c.text(x + 190, y, line[1], Face::regular, 20, Color::muted);
+        y += 48; // the middle of the row
+        buttons::draw(c, line.first, x, y - 20, 40);
+        buttons::draw(c, line.second, x + 42, y - 20, 40);
+        c.text(x + 100, y + font::cap_height(Face::regular, 20) / 2, line.what, Face::regular, 20,
+               Color::muted);
     }
 
     y += 80;

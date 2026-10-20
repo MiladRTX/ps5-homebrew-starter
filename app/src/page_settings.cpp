@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#include "buttons.hpp"
 #include "hello.hpp"
 #include "pad.hpp"
 #include "pages.hpp"
@@ -112,11 +113,11 @@ void settings_draw(screen::Canvas &c) noexcept
         c.text(menu_x + 12, y + 68, row.help, Face::regular, 18, Color::muted);
 
         // The value on the right: ‹ Medium › for a choice, the button for an action.
-        const char *value = row.value ? row.names[*row.value] : "Cross";
-        const float w = screen::Canvas::text_width(value, Face::semibold, 22);
         const int right = menu_x + menu_w - 12;
         if (row.value)
         {
+            const char *value = row.names[*row.value];
+            const float w = screen::Canvas::text_width(value, Face::semibold, 22);
             const Color arrows = selected ? Color::accent : Color::faint;
             c.text(right - 18, y + 52, "\xE2\x80\xBA", Face::semibold, 26, arrows); // ›
             c.text(right - 40 - w, y + 51, value, Face::semibold, 22,
@@ -124,7 +125,7 @@ void settings_draw(screen::Canvas &c) noexcept
             c.text(right - 62 - w, y + 52, "\xE2\x80\xB9", Face::semibold, 26, arrows); // ‹
         }
         else
-            c.text(right - w, y + 51, value, Face::semibold, 22, selected ? Color::accent : Color::faint);
+            buttons::draw(c, buttons::cross, right - 44, y + (row_h - 8) / 2 - 22, 44, selected ? 255 : 120);
     }
 
     // The box as the settings make it.
@@ -137,8 +138,12 @@ void settings_draw(screen::Canvas &c) noexcept
                  size, size / 7, box_colour());
 
     // What the buttons do here.
-    c.text(menu_x, content_y + content_h - 36,
-           "Up / Down  choose     Left / Right  change     Cross  change or reset", Face::regular,
-           18, Color::faint);
+    using namespace buttons;
+    static const Hint what_does_what[] = {
+        {dpad_up, dpad_down, "choose"},
+        {dpad_left, dpad_right, "change"},
+        {cross, none, "change or reset"},
+    };
+    hints(c, menu_x, content_y + content_h - 38, what_does_what, 3);
 }
 } // namespace starter::hello

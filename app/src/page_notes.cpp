@@ -7,6 +7,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#include "buttons.hpp"
 #include "hello.hpp"
 #include "keyboard.hpp"
 #include "pad.hpp"
@@ -291,8 +292,11 @@ void notes_draw(screen::Canvas &c) noexcept
         }
     }
 
-    c.text(card_x + 32, content_y + content_h - 30,
-           "Up / Down  choose     L2 / R2  page     Triangle  new     Cross  edit     Square  delete",
-           Face::regular, 18, Color::faint);
+    using namespace buttons;
+    static const Hint what_does_what[] = {
+        {dpad_up, dpad_down, "choose"}, {l2, r2, "page"},      {triangle, none, "new"},
+        {cross, none, "edit"},          {square, none, "delete"},
+    };
+    hints(c, card_x + 32, content_y + content_h - 38, what_does_what, 5);
 }
 } // namespace starter::hello

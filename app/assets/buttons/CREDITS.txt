@@ -1,0 +1,5 @@
+Button icons: "PS4 Buttons" by Arks (@ScissorMarks), https://arks.itch.io/ps4-buttons
+PS4 Buttons (c) 2020 by ArksDigital, licensed under CC BY 4.0:
+https://creativecommons.org/licenses/by/4.0/
+Changes: a selection of the pack's PNGs, resized from 480 x 480 to 96 x 96 and renamed.
+PlayStation and the PlayStation logo are registered trademarks of Sony Interactive Entertainment.

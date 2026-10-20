@@ -92,6 +92,8 @@ void about_draw(screen::Canvas &c) noexcept
         {"", "by BlackBearReloaded"},
         {"PAYLOADS", "PS5 payload SDK"},
         {"FONTS", "Inter, JetBrains Mono"},
+        {"BUTTONS", "PS4 Buttons by Arks (CC BY 4.0)"},
+        {"", "arks.itch.io/ps4-buttons"},
     };
     y += 4;
     for (const auto &row : about)
