@@ -47,7 +47,7 @@ ZIP:        build/app/PPSA99901.zip
 
 What `app/build.sh` did, in order:
 
-1. built `payload/service/service.elf`, because the app carries it (chapter 8)
+1. built `payload/service/service.elf`, because the app carries it (chapter 9)
 2. copied `kit/` to `~/.ps5-starter/kit-work` (again only when `kit/` changed)
 3. copied `app/src`, `app/sce_sys`, the fonts and `service.elf` next to the kit
 4. checked the title files (the icon must be a 512x512 PNG, and so on)
@@ -82,12 +82,13 @@ icon. Open it.
 - **Cross**: a notification pops up
 - **Square**: the box changes colour
 - **Triangle**: the box goes back to the middle
-- **L1 / R1**: switch pages. **Settings** is a menu: box size, move speed,
-  colour. **About** shows the background service in detail.
+- **L1 / R1**: switch pages. **Notes** is a list you write with the PS5's
+  keyboard (Triangle). **Settings** is a menu: box size, move speed, colour,
+  sound. **About** shows the background service in detail, and the app's icon.
 
 The panel on the right shows the last button you pressed, and the
 **background service**: the app starts `service.elf` the first time you open
-it, and shows its uptime and the CPU temperature (chapter 8).
+it, and shows its uptime and the CPU temperature (chapter 9).
 
 Close the app (PS button, then close it on the card) and open it again: the box
 is where you left it, because the app saved its position (chapter 6).
@@ -102,15 +103,15 @@ The loop is: **edit, build, copy, open**.
    leave you with a mix of old and new files.
 4. Copy the folder again (or `app/build.sh deploy <IP>`), and open the app.
 
-Chapter 9 shows how to see your changes on your PC first, without a console.
+Chapter 10 shows how to see your changes on your PC first, without a console.
 
 ## Good to know
 
 - **While an app is open, the PS5 treats it like a game.** For example, the
   fan's minimum speed is the in-game one. That's normal.
 - **An app is closed when a game starts**, and when you close it yourself.
-  Anything that has to keep running belongs in a payload (chapter 8).
-- **Don't use the starter's title ID for your own app.** Chapter 10 explains
+  Anything that has to keep running belongs in a payload (chapter 9).
+- **Don't use the starter's title ID for your own app.** Chapter 11 explains
   how to pick your own before you share anything.
 
 Next: [App basics: drawing, input, files](06-app-basics.md)

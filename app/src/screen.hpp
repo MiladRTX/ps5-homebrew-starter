@@ -8,6 +8,7 @@
 #pragma once
 
 #include "font.hpp"
+#include "image.hpp"
 
 #include <cstdint>
 #include <string_view>
@@ -81,6 +82,10 @@ class Canvas final
                   int alpha = 255) noexcept;
     void dashed_v(int x, int y0, int y1, int thick, int dash, int gap, Color c,
                   int alpha = 255) noexcept;
+    // A picture (image.hpp) scaled to w x h at x, y: smooth both ways (averaged
+    // when shrunk, blended between pixels when enlarged), with its own
+    // transparency, times alpha.
+    void image(int x, int y, int w, int h, const image::Image &picture, int alpha = 255) noexcept;
     // An icon: c painted through a w x h coverage mask (0..255, row by row).
     void icon(int x, int y, int w, int h, const std::uint8_t *cover, Color c, int alpha = 255) noexcept;
     // Text with its baseline at y; tracking in em (CSS letter-spacing). Returns

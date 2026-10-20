@@ -16,6 +16,7 @@
  *   1 / 3           L2 / R2          Tab             OPTIONS
  *   F / G           L3 / R3          mouse drag      touchpad
  *   Esc             close the simulator
+ * While the on-screen keyboard is open, the keys type instead (keyboard_sim.cpp).
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -288,6 +289,14 @@ bool init() noexcept
 unsigned poll() noexcept
 {
     bridge_poll();
+    if (sim::keyboard_active())
+    {
+        // The keyboard is open: the keys type, and the controller is the
+        // keyboard's, as on the PS5.
+        input::suspend();
+        g_touch = Touch{false, 0, 0};
+        return input::take_presses();
+    }
     const ControllerState here = local(), bridged = remote();
     input::sample(keyboard() | map(here) | map(bridged) | g_script_buttons);
     g_touch = touchpad(here, bridged);

@@ -7,6 +7,7 @@
 #include "hello.hpp"
 #include "pad.hpp"
 #include "pages.hpp"
+#include "sound.hpp"
 
 #include <stdio.h>
 
@@ -79,13 +80,18 @@ bool play_update(unsigned pressed) noexcept
         if (pressed & pad::cross)
         {
             screen::notify("Hello from Hello PS5!");
+            sound::play(sound::Effect::select);
             say("Notification sent");
         }
         if (pressed & pad::square)
+        {
             s.colour = (s.colour + 1) % colour_count;
+            sound::play(sound::Effect::move);
+        }
         if (pressed & pad::triangle)
         {
             centre_box();
+            sound::play(sound::Effect::back);
             say("Box back in the middle");
         }
         if (pressed & (pad::left | pad::right | pad::up | pad::down | pad::square | pad::triangle))

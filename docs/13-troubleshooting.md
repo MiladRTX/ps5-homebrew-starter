@@ -1,4 +1,4 @@
-# 12. Troubleshooting
+# 13. Troubleshooting
 
 Problems that actually came up while building Breeze and this starter, by
 what you see.
@@ -23,6 +23,17 @@ kit in `~/.ps5-starter/kit-work`. Your own scripts should quote every path (`"$d
 **The first app build fails while downloading**
 The kit downloads its SDK and zlib on the first build. Run it again. Nothing
 is half-installed; it starts the failed download over.
+
+**`undefined symbol: sce...` when the app links**
+The payload SDK has no stub for that system function. Add a link-only stub
+for its library, the way the keyboard's `sceCommonDialogInitialize` is done
+(chapter 8, *A function the SDK doesn't have*). Looking the function up while
+the app runs instead doesn't work: the console refuses.
+
+**`undefined symbol: __emutls_get_address`**
+Something uses `thread_local` variables, which the app's runtime doesn't have.
+stb_image did, until `STBI_NO_THREAD_LOCALS` in `stb_impl.c`. Turn them off in
+the library, or use plain variables.
 
 ## Payloads
 
@@ -103,7 +114,7 @@ open Ubuntu again. On Linux, run it from a desktop session.
   then run the simulator again.
 
 **My controller doesn't do anything in the simulator**
-Read `build/sim/bridge.log` (chapter 9 explains the bridge):
+Read `build/sim/bridge.log` (chapter 10 explains the bridge):
 - *no controller yet*: turn it on, or connect it. The bridge keeps looking,
   every second.
 - No log, or `no Python on Windows`: install Python from python.org, then run
@@ -113,6 +124,11 @@ Read `build/sim/bridge.log` (chapter 9 explains the bridge):
   `STARTER_SIM_BRIDGE_PORT=9300 app/sim/run.sh`.
 
 The keyboard always works.
+
+**No sound in the simulator**
+The terminal says `simulator: no sound (...)` with the reason. In WSL, sound
+comes through the same built-in display support as the window: `wsl --update`
+fixes most cases. Everything else works without sound.
 
 **It's smooth in the simulator but slow on the PS5**
 Your PC draws much faster than the console. Draw less per frame, or only when

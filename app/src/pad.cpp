@@ -121,8 +121,11 @@ unsigned poll() noexcept
                                   static_cast<std::uint32_t>(s[1]) << 8 |
                                   static_cast<std::uint32_t>(s[2]) << 16 |
                                   static_cast<std::uint32_t>(s[3]) << 24;
-        // Nothing held while the system has the controller (the PS button's menu).
-        input::sample((raw & intercepted) ? 0 : translate(raw, s[4], s[5]));
+        // The system has the controller (the PS button's menu, the keyboard).
+        if (raw & intercepted)
+            input::suspend();
+        else
+            input::sample(translate(raw, s[4], s[5]));
 
         g_touch.down = !(raw & intercepted) && s[touch_count_at] > 0;
         if (g_touch.down)

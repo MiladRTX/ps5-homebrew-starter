@@ -30,6 +30,13 @@ void sample(unsigned held) noexcept
     g_held = held;
 }
 
+void suspend() noexcept
+{
+    g_held = ~0U; // everything "held": only a press after letting go counts
+    g_pressed = 0;
+    g_repeat_button = 0;
+}
+
 unsigned take_presses() noexcept
 {
     unsigned pressed = g_pressed;

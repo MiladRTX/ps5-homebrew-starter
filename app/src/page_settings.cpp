@@ -8,6 +8,7 @@
 #include "hello.hpp"
 #include "pad.hpp"
 #include "pages.hpp"
+#include "sound.hpp"
 
 namespace starter::hello
 {
@@ -19,6 +20,7 @@ namespace
 const char *const size_names[size_count] = {"Small", "Medium", "Large"};
 const char *const speed_names[speed_count] = {"Slow", "Normal", "Fast"};
 const char *const colour_names[colour_count] = {"Blue", "Green", "Orange"};
+const char *const sound_names[2] = {"Off", "On"};
 
 // A row is either a choice (value points at the setting) or an action.
 struct Row
@@ -30,7 +32,7 @@ struct Row
     const char *help;          // the line under the label
 };
 
-constexpr int row_count = 4;
+constexpr int row_count = 5;
 
 const Row *rows() noexcept
 {
@@ -39,7 +41,8 @@ const Row *rows() noexcept
     table[0] = {"Box size", &s.size, size_count, size_names, "How big the box on the Play page is."};
     table[1] = {"Move speed", &s.speed, speed_count, speed_names, "How far one press moves it."};
     table[2] = {"Box colour", &s.colour, colour_count, colour_names, "Square on the Play page changes it too."};
-    table[3] = {"Reset position", nullptr, 0, nullptr, "Puts the box back in the middle."};
+    table[3] = {"Sound", &s.sound, 2, sound_names, "The clicks and chirps as you use the app."};
+    table[4] = {"Reset position", nullptr, 0, nullptr, "Puts the box back in the middle."};
     return table;
 }
 
@@ -48,6 +51,8 @@ void step_choice(const Row &row, int delta) noexcept
 {
     *row.value = (*row.value + delta + row.count) % row.count;
     clamp_box(); // a bigger box may now stick out of the playground
+    sound::enable(state().sound != 0);
+    sound::play(sound::Effect::select); // after enable: turning sound on plays it, off doesn't
     changed();
 }
 
@@ -65,10 +70,13 @@ bool settings_update(unsigned pressed) noexcept
     const Row *table = rows();
     const Row &row = table[s.menu_selected];
 
+    const int before = s.menu_selected;
     if ((pressed & pad::up) && s.menu_selected > 0)
         --s.menu_selected;
     if ((pressed & pad::down) && s.menu_selected + 1 < row_count)
         ++s.menu_selected;
+    if (s.menu_selected != before)
+        sound::play(sound::Effect::move);
     if (row.value && (pressed & pad::left))
         step_choice(row, -1);
     if (row.value && (pressed & (pad::right | pad::cross)))
@@ -77,6 +85,7 @@ bool settings_update(unsigned pressed) noexcept
     {
         centre_box();
         changed();
+        sound::play(sound::Effect::select);
         say("Box back in the middle");
     }
     return true;

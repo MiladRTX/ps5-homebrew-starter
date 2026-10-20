@@ -16,7 +16,7 @@ same way and tested on real hardware.
 | [`payload/hello`](payload/hello) | Twenty lines of C that show a notification | Loaded once, then it exits |
 | [`payload/service`](payload/service) | A background service with a status page you open on your phone. It runs as a single copy, logs, survives rest mode and stops cleanly | Keeps running in the background |
 | [`app/sim`](app/sim) | **The PC simulator**: Hello PS5 live in a window on your PC, with the keyboard, mouse or a controller, and the service running too | On your PC |
-| [`app`](app) | **Hello PS5**, a home screen app with three pages and a settings menu: drawing, text, the DualSense, the touchpad, notifications, saved settings. It starts the service, shows its status, and replaces it with a newer one after an update | On the TV, from the home screen |
+| [`app`](app) | **Hello PS5**, a home screen app with four pages: drawing, text, the DualSense, the touchpad, a settings menu, a list that scrolls, the on-screen keyboard, pictures, sound, notifications, saved settings. It starts the service, shows its status, and replaces it with a newer one after an update | On the TV, from the home screen |
 
 ![Hello PS5](docs/images/hello-ps5.png)
 
@@ -52,7 +52,7 @@ In WSL (or Linux):
 git clone https://github.com/MiladRTX/ps5-homebrew-starter.git
 cd ps5-homebrew-starter
 tools/setup.sh                      # compilers + the PS5 payload SDK, once
-tools/new-app.py "My App" PPSA12345 # make it yours: name, title ID, folders (chapter 10)
+tools/new-app.py "My App" PPSA12345 # make it yours: name, title ID, folders (chapter 11)
 make -C payload/hello               # payload/hello/hello.elf
 app/build.sh                        # build/app/PPSA99901 and its ZIP
 app/sim/run.sh                      # the app live in a window on your PC, no console needed
@@ -74,11 +74,12 @@ Read it in order the first time. Each chapter ends with something working.
 5. [Your first app](docs/05-first-app.md)
 6. [App basics: drawing, input, files](docs/06-app-basics.md)
 7. [Menus and pages](docs/07-menus-and-pages.md)
-8. [App and payload together](docs/08-app-and-payload.md)
-9. [Testing on your PC](docs/09-pc-preview.md)
-10. [Make it yours](docs/10-make-it-yours.md)
-11. [Share it](docs/11-share-it.md)
-12. [Troubleshooting](docs/12-troubleshooting.md)
+8. [Lists, pictures, the keyboard and sound](docs/08-lists-images-keyboard-sound.md)
+9. [App and payload together](docs/09-app-and-payload.md)
+10. [Testing on your PC](docs/10-pc-preview.md)
+11. [Make it yours](docs/11-make-it-yours.md)
+12. [Share it](docs/12-share-it.md)
+13. [Troubleshooting](docs/13-troubleshooting.md)
 
 ## Layout
 
@@ -90,6 +91,7 @@ payload/service/      the background service
 app/src/              Hello PS5's code: hello.cpp runs it, page_*.cpp are its pages
 app/sce_sys/          the app's title files: param.json, icon0.png
 app/fonts/            fonts the app draws with
+app/stubs/            link-only stubs for system functions the SDK lacks
 app/sim/              the PC simulator: the app live in a window
 app/preview/          the PC preview: pictures of chosen screens
 app/build.sh          builds the app (and the service it carries)
@@ -102,13 +104,17 @@ docs/                 the guide
 - The app builds on [ps5-native-app-boilerplate](https://github.com/blackbearreloaded/ps5-native-app-boilerplate)
   by **BlackBearReloaded** (GPL-3.0-or-later). It's included in [`kit/`](kit) as it
   is at commit `44ae1da`, with its own README and license; only its demo app's
-  artwork and music are left out, since the starter has its own.
+  artwork and music are left out, since the starter has its own. One addition
+  comes from the kit's later version: `APP_IMPORT_STUBS`, for system functions
+  the SDK has no stubs for.
+- The on-screen keyboard and the sound output follow BlackBearReloaded's code
+  in ProsperoStore (GPL-3.0-or-later).
 - Payloads build with the [PS5 payload SDK](https://github.com/ps5-payload-dev/sdk) by John Törnblom.
 - The app's renderer, fonts handling and controller code come from
   [Breeze](https://github.com/MiladRTX/Breeze) by Milad.
 - Fonts: [Inter](https://rsms.me/inter/) and [JetBrains Mono](https://www.jetbrains.com/lp/mono/),
   SIL Open Font License (licenses in `app/fonts/`).
-- Text rendering: [stb_truetype](https://github.com/nothings/stb) by Sean Barrett (public domain / MIT).
+- Text and pictures: [stb_truetype and stb_image](https://github.com/nothings/stb) by Sean Barrett (public domain / MIT).
 
 This starter is GPL-3.0 (see [LICENSE](LICENSE)), like the boilerplate it
 builds on. An app made from it is GPL-3.0 too: share its source when you share it.

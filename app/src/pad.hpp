@@ -40,6 +40,6 @@ bool init() noexcept;
 
 // The buttons pressed since the last call. Held directions (D-pad or left
 // stick), L1/R1 and L2/R2 repeat, faster after a while. Nothing while the
-// system has the controller (the PS button's menu).
+// system has the controller (the PS button's menu, the on-screen keyboard).
 [[nodiscard]] unsigned poll() noexcept;
 } // namespace starter::pad

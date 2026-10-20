@@ -18,6 +18,12 @@ namespace starter::hello
 bool play_update(unsigned pressed) noexcept;
 void play_draw(screen::Canvas &c) noexcept;
 
+bool notes_update(unsigned pressed) noexcept;
+void notes_draw(screen::Canvas &c) noexcept;
+// The notes on disk: read once at startup; notes_add() is also for the preview.
+void notes_load() noexcept;
+bool notes_add(const char *text) noexcept;
+
 bool settings_update(unsigned pressed) noexcept;
 void settings_draw(screen::Canvas &c) noexcept;
 

@@ -44,7 +44,7 @@ tools/setup.sh
 This does two things:
 
 1. It installs the compiler (clang 18), the linker, make, git, Python, SDL2
-   (for running apps in a window on your PC, chapter 9) and a few helpers with
+   (for running apps in a window on your PC, chapter 10) and a few helpers with
    `apt`. It asks for your password once.
 2. It downloads the **PS5 payload SDK** v0.42 and checks it against its known
    SHA-256 before using it, so a broken or tampered download is refused. It

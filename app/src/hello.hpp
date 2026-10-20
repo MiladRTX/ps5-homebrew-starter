@@ -1,13 +1,15 @@
 /*
  * PS5 Homebrew Starter - "Hello PS5", the starter app: its state and what the
  * pages share. hello.cpp runs the app and draws the tab bar; each page is its
- * own file (page_play.cpp, page_settings.cpp, page_about.cpp).
- * docs/06-app-basics.md and docs/07-menus-and-pages.md walk through it.
+ * own file (page_play.cpp, page_notes.cpp, page_settings.cpp, page_about.cpp).
+ * docs/06-app-basics.md, 07-menus-and-pages.md and 08-lists-images-keyboard-sound.md
+ * walk through it.
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 #pragma once
 
+#include "image.hpp"
 #include "screen.hpp"
 
 #include <cstdint>
@@ -18,10 +20,11 @@ namespace starter::hello
 enum class Page
 {
     play,
+    notes,
     settings,
     about,
 };
-constexpr int page_count = 3;
+constexpr int page_count = 4;
 
 // Choices on the Settings page, saved with the box's position.
 constexpr int size_count = 3;   // small, medium, large
@@ -41,7 +44,19 @@ struct State
     int size;
     int speed;
     int colour;
+    int sound;         // 1 on, 0 off
     int menu_selected; // the highlighted row on the Settings page
+
+    // Notes: the list's selection and scrolling, and what's being typed.
+    int notes_selected;
+    int notes_first;         // the first row in view
+    float notes_scroll;      // the scroll position shown, in pixels: eases to notes_first
+    int delete_armed;        // the note a first Square press marked, -1 none
+    std::uint64_t delete_until_ms;
+    int editing;             // the keyboard is open for: -1 a new note, n note n, -2 nothing
+
+    // The app's own icon, drawn on the About page.
+    image::Image icon;
 
     // The background service (payload/service), as last asked.
     bool service_up;

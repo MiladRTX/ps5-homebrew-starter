@@ -9,7 +9,8 @@
  * Steps, in order: a button name (up down left right cross circle square
  * triangle l1 r1 l2 r2 options l3 r3) presses it; hold:<button>:<ms> holds
  * it; touch:<x>,<y> touches the touchpad (0 to 1); wait:<ms> waits;
- * shot:<file.ppm> saves the screen; quit closes the simulator.
+ * type:<text> types into the open keyboard (_ for a space), enter and cancel
+ * close it; shot:<file.ppm> saves the screen; quit closes the simulator.
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -44,7 +45,7 @@ std::uint64_t g_note_until = 0;
 void open_window() noexcept
 {
     if (SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
-        fail("no display (see docs/09-pc-preview.md)");
+        fail("no display (see docs/10-pc-preview.md)");
     g_window = SDL_CreateWindow("Hello PS5 - PC simulator", SDL_WINDOWPOS_CENTERED,
                                 SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_RESIZABLE);
     if (!g_window)
@@ -153,6 +154,14 @@ const char *script_step(std::uint64_t now, bool &quit) noexcept
     char name[32];
     if (!strcmp(word, "quit"))
         quit = true;
+    else if (!strncmp(word, "type:", 5) || !strcmp(word, "enter") || !strcmp(word, "cancel"))
+    {
+        if (word[0] == 't')
+            keyboard_type(word + 5);
+        else
+            keyboard_finish(word[0] == 'e');
+        g_script.until = now + 60;
+    }
     else if (sscanf(word, "wait:%d", &ms) == 1)
         g_script.until = now + static_cast<std::uint64_t>(ms);
     else if (sscanf(word, "touch:%f,%f", &x, &y) == 2)
@@ -207,7 +216,7 @@ void notify(std::string_view message) noexcept
     sim::open_window();
     sim::start_script();
     Canvas canvas;
-    bool dirty = true, note_shown = false, quit = false;
+    bool dirty = true, note_shown = false, keyboard_shown = false, quit = false;
     const char *pending_shot = nullptr;
     (void)update();
 
@@ -217,6 +226,13 @@ void notify(std::string_view message) noexcept
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
+            // The keyboard first: while it's open, Esc cancels it rather than
+            // closing the simulator.
+            if (sim::keyboard_event(event))
+            {
+                dirty = true;
+                continue;
+            }
             if (event.type == SDL_QUIT ||
                 (event.type == SDL_KEYDOWN && event.key.keysym.scancode == SDL_SCANCODE_ESCAPE))
                 quit = true;
@@ -235,12 +251,16 @@ void notify(std::string_view message) noexcept
         if (update())
             dirty = true;
         const bool note_now = sim::g_note[0] && now_ms() < sim::g_note_until;
-        if (note_now != note_shown)
+        const bool keyboard_now = sim::keyboard_active();
+        if (note_now != note_shown || keyboard_now != keyboard_shown)
             dirty = true;
         if (dirty)
         {
             draw(canvas);
             note_shown = note_now;
+            keyboard_shown = keyboard_now;
+            if (keyboard_now)
+                sim::keyboard_draw(canvas);
             if (note_now)
                 sim::draw_note(canvas);
             SDL_UpdateTexture(sim::g_texture, nullptr, pixels(), width * 4);

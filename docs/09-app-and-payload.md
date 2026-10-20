@@ -1,4 +1,4 @@
-# 8. App and payload together
+# 9. App and payload together
 
 Apps and payloads are good at different things:
 
@@ -140,4 +140,4 @@ things, like settings or files, don't let any device on the network do that:
 - Close the app, then open `http://<PS5 IP>:8080` on your phone: the service is
   still running, because it isn't part of the app.
 
-Next: [Testing on your PC](09-pc-preview.md)
+Next: [Testing on your PC](10-pc-preview.md)

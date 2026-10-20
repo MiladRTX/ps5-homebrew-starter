@@ -1,7 +1,7 @@
 /*
  * PS5 Homebrew Starter - talking to a background payload on the same console.
  * The app and the payload are separate processes; they talk over HTTP on
- * 127.0.0.1, like a web page would (docs/08-app-and-payload.md).
+ * 127.0.0.1, like a web page would (docs/09-app-and-payload.md).
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 

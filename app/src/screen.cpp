@@ -480,6 +480,77 @@ void Canvas::dashed_v(int x, int y0, int y1, int thick, int dash, int gap, Color
         rect(x, y, thick, y + dash < y1 ? dash : y1 - y, c, alpha);
 }
 
+void Canvas::image(int x, int y, int w, int h, const image::Image &picture, int alpha) noexcept
+{
+    if (!picture.loaded() || w <= 0 || h <= 0 || alpha <= 0)
+        return;
+    const float sx = static_cast<float>(picture.w) / static_cast<float>(w);
+    const float sy = static_cast<float>(picture.h) / static_cast<float>(h);
+    const bool shrink = sx >= 1 && sy >= 1;
+    // Colours are summed weighted by their alpha ("premultiplied"), so a
+    // transparent pixel's colour doesn't bleed into its neighbours.
+    auto add = [&](int px, int py, float weight, float sum[4]) {
+        const std::uint32_t p = picture.pixels[py * picture.w + px];
+        const float a = static_cast<float>(p >> 24) * weight;
+        sum[0] += static_cast<float>(p & 255) * a;
+        sum[1] += static_cast<float>((p >> 8) & 255) * a;
+        sum[2] += static_cast<float>((p >> 16) & 255) * a;
+        sum[3] += a;
+    };
+    for (int j = 0; j < h; ++j)
+    {
+        const int dy = y + j;
+        if (dy < clip_y0 || dy >= clip_y1)
+            continue;
+        for (int i = 0; i < w; ++i)
+        {
+            const int dx = x + i;
+            if (dx < clip_x0 || dx >= clip_x1)
+                continue;
+            float sum[4] = {0, 0, 0, 0}, total = 0;
+            if (shrink)
+            {
+                // Every source pixel this screen pixel covers, averaged.
+                const int x0 = static_cast<int>(static_cast<float>(i) * sx);
+                const int y0 = static_cast<int>(static_cast<float>(j) * sy);
+                int x1 = static_cast<int>(static_cast<float>(i + 1) * sx);
+                int y1 = static_cast<int>(static_cast<float>(j + 1) * sy);
+                x1 = x1 <= x0 ? x0 + 1 : x1 > picture.w ? picture.w : x1;
+                y1 = y1 <= y0 ? y0 + 1 : y1 > picture.h ? picture.h : y1;
+                for (int py = y0; py < y1; ++py)
+                    for (int px = x0; px < x1; ++px)
+                        add(px, py, 1, sum);
+                total = static_cast<float>((x1 - x0) * (y1 - y0));
+            }
+            else
+            {
+                // Between the four nearest source pixels.
+                float u = (static_cast<float>(i) + 0.5f) * sx - 0.5f;
+                float v = (static_cast<float>(j) + 0.5f) * sy - 0.5f;
+                u = u < 0 ? 0 : u;
+                v = v < 0 ? 0 : v;
+                const int px = static_cast<int>(u), py = static_cast<int>(v);
+                const int px1 = px + 1 < picture.w ? px + 1 : px, py1 = py + 1 < picture.h ? py + 1 : py;
+                const float fu = u - static_cast<float>(px), fv = v - static_cast<float>(py);
+                add(px, py, (1 - fu) * (1 - fv), sum);
+                add(px1, py, fu * (1 - fv), sum);
+                add(px, py1, (1 - fu) * fv, sum);
+                add(px1, py1, fu * fv, sum);
+                total = 1;
+            }
+            if (sum[3] <= 0)
+                continue; // fully transparent here
+            const auto channel = [&](int k) {
+                const float c = sum[k] / sum[3];
+                return static_cast<std::uint32_t>(c > 255 ? 255 : c);
+            };
+            const std::uint32_t c = channel(0) | channel(1) << 8 | channel(2) << 16;
+            const float coverage = sum[3] / total; // 0..255
+            put(dx, dy, c, static_cast<unsigned>(coverage * static_cast<float>(alpha) / 255.0f + 0.5f));
+        }
+    }
+}
+
 void Canvas::icon(int x, int y, int w, int h, const std::uint8_t *cover, Color c, int alpha) noexcept
 {
     const auto col = static_cast<std::uint32_t>(c);

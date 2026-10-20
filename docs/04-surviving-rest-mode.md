@@ -101,7 +101,7 @@ same port again shortly after closing it can fail.
 - **A new address.** If you showed the address in a notification, show the new
   one. Users will look for the page at the old address otherwise.
 - **The ELF loader may be gone.** An app that starts its payload through the
-  loader (chapter 8) can find nothing on port 9021 after rest mode. Say so on
+  loader (chapter 9) can find nothing on port 9021 after rest mode. Say so on
   screen instead of failing silently.
 
 ## Test it

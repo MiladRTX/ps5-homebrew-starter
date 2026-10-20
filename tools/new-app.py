@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Makes the starter yours: gives the app your name and title ID everywhere
-it appears, in one go (docs/10-make-it-yours.md).
+it appears, in one go (docs/11-make-it-yours.md).
 
     tools/new-app.py "My App" PPSA12345
     tools/new-app.py "My App" PPSA12345 --dry-run     only show what would change
@@ -152,7 +152,7 @@ def main():
     print("  app/sce_sys/param.json")
     make_icon(name, root / "app/sce_sys/icon0.png")
     print(f"\nDone. Build it with app/build.sh: the app folder is build/app/{new['title_id']}.")
-    print("Pick a title ID nobody else uses: see docs/10-make-it-yours.md.")
+    print("Pick a title ID nobody else uses: see docs/11-make-it-yours.md.")
 
 
 if __name__ == "__main__":

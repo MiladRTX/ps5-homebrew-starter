@@ -1,4 +1,4 @@
-# 9. Testing on your PC
+# 10. Testing on your PC
 
 Copying the app to the console and opening it takes a minute every time. Your
 PC can do most of that work in seconds, with two tools:
@@ -31,6 +31,9 @@ A window opens with Hello PS5 running, and you use it like on the console:
 | Touchpad | drag with the mouse |
 | (close the app) | Esc, or close the window |
 
+When the app opens the on-screen keyboard (Triangle on the Notes page), a
+text box takes its place and your keys type: **Enter** is OK, **Esc** cancels.
+
 Your DualSense works too, buttons, sticks and touchpad, over Bluetooth or USB
 (see *A real controller* below).
 
@@ -56,14 +59,17 @@ Most of the app runs exactly as on the PS5, not imitated:
   for the app's own folder. The saved settings are in
   `build/sim/data/ps5-starter/hello-app.txt`.
 - **Notifications** pop up in the window's corner, and in the terminal.
+- **Sound:** the same effects, made by the same code, out of your PC's speakers.
 
-Only four things are swapped for PC versions, all in
+Only a few things are swapped for PC versions, all in
 [`app/sim`](../app/sim) and two small spots in `app/src`:
 
 | PS5 | PC |
 | --- | --- |
 | `screen.cpp` shows frames on the TV | `screen_sim.cpp` shows them in a window |
 | `pad.cpp` reads the DualSense | `pad_sim.cpp` reads keyboard, mouse and controller |
+| `keyboard.cpp` opens the PS5's keyboard | `keyboard_sim.cpp` shows a text box |
+| `sound.cpp` plays through the console | `sound_sim.cpp` plays through SDL |
 | `start_payload()` sends the ELF to port 9021 | it starts the PC service program |
 | `/app0`, `/data` | `build/sim/app0`, `build/sim/data` ([`paths.hpp`](../app/src/paths.hpp)) |
 
@@ -77,7 +83,7 @@ FILE *f = fopen(STARTER_DATA "/my-app/settings.txt", "r");
 
 ### Trying an update
 
-The simulator is the easiest place to watch chapter 8's update flow:
+The simulator is the easiest place to watch chapter 9's update flow:
 
 1. Run the simulator and close it. The service (1.0) keeps running.
 2. Raise `SERVICE_VERSION` in `payload/service/service_version.h` to `1.1`.
@@ -91,11 +97,11 @@ The simulator can press the buttons itself, which makes a repeatable test of
 a whole flow:
 
 ```bash
-STARTER_SIM_SCRIPT="r1 down right shot:settings.ppm quit" app/sim/run.sh
+STARTER_SIM_SCRIPT="r1 r1 down right shot:settings.ppm quit" app/sim/run.sh
 ```
 
-That opens Settings, chooses the second row, changes it, saves a picture of the
-screen in `build/sim`, and closes. Steps run in order:
+That opens Settings (R1 twice), chooses the second row, changes it, saves a
+picture of the screen in `build/sim`, and closes. Steps run in order:
 
 | Step | Does |
 | --- | --- |
@@ -103,6 +109,8 @@ screen in `build/sim`, and closes. Steps run in order:
 | `hold:right:800` | holds it for 800 ms (repeats included) |
 | `touch:0.5,0.5` | touches the touchpad (0 to 1 across and down) |
 | `wait:500` | waits half a second |
+| `type:Buy_milk` | types into the open keyboard (`_` is a space) |
+| `enter`, `cancel` | closes the keyboard with OK, or without |
 | `shot:name.ppm` | saves the screen |
 | `quit` | closes the simulator |
 
@@ -155,9 +163,11 @@ a DualSense and its touchpad included.
 
 - **Speed.** Your PC draws much faster than the PS5. Something smooth in the
   simulator can be slow on the console.
-- **The console itself:** its system menus and real notifications, rest mode,
-  memory limits, and any PS5 function you add later. A new `sce...` call needs
-  a PC stand-in, like the service's in `payload/service/sim_stubs.c`.
+- **The console itself:** its system menus, its keyboard and real
+  notifications, rest mode, memory limits, and any PS5 function you add later.
+  A new `sce...` call needs a PC stand-in, like the service's in
+  `payload/service/sim_stubs.c`, and only the console shows whether the call
+  really works there.
 
 So: build and try in the simulator, then **always** check on the console
 before you share anything.
@@ -171,8 +181,9 @@ app/preview/run.sh
 ```
 1_play_start.png
 2_play.png
-3_settings.png
-4_about_updating.png
+3_notes.png
+4_settings.png
+5_about_updating.png
 ```
 
 They're in `build/preview/`. Open them from Windows with `explorer.exe build/preview`
@@ -196,9 +207,17 @@ shot(argv[2], "2_play");
 
 That's what it's good at: states that are tedious to reach by hand, like an
 empty list, a very long name, an error message, or the "older service" case
-from chapter 8. Add a shot for each screen and state you want to keep an eye
-on, and look through them after every change. `run.sh` compiles every app
-file except `main.cpp` and `pad.cpp`; when you add a new `.cpp`, add it to its
-list.
+from chapter 9. Add a shot for each screen and state you want to keep an eye
+on, and look through them after every change. `run.sh` compiles the app's
+files from a list (not `main.cpp` or the controller's); when you add a new
+`.cpp`, add it there.
 
-Next: [Make it yours](10-make-it-yours.md)
+The Notes shot presses Down the same way the console would, through the
+page's own code, so the list in the picture has really scrolled:
+
+```cpp
+for (int i = 0; i < 9; ++i)
+    (void)starter::hello::notes_update(starter::pad::down);
+```
+
+Next: [Make it yours](11-make-it-yours.md)

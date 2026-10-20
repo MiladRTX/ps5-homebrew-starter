@@ -25,7 +25,7 @@ starter::screen::run(starter::hello::update, starter::hello::draw);
 
 Keeping them apart is the one rule to follow: **`update` changes things,
 `draw` only looks at them.** It keeps the code easy to follow, and it's what
-makes the PC preview (chapter 9) possible: the preview sets a state by hand
+makes the PC preview (chapter 10) possible: the preview sets a state by hand
 and calls `draw`.
 
 Drawing happens on the CPU, and a full 1920x1080 frame takes a few
@@ -94,7 +94,7 @@ moment, like a keyboard. So a held button moves the box steadily with no extra
 code.
 
 That timing lives in [`pad_input.cpp`](../app/src/pad_input.cpp), shared by
-the PS5 and the PC simulator (chapter 9), so a held key in the simulator feels
+the PS5 and the PC simulator (chapter 10), so a held key in the simulator feels
 exactly like a held button on the console.
 
 The names are in [`pad.hpp`](../app/src/pad.hpp): `up down left right cross

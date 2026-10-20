@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The app on your PC, live, in a window (docs/09-pc-preview.md). The app's own
+# The app on your PC, live, in a window (docs/10-pc-preview.md). The app's own
 # code, with a window instead of the TV, the keyboard, mouse or a controller
 # instead of the DualSense, and the service running as a PC program.
 #
@@ -29,7 +29,7 @@ fi
 
 if [[ -z ${DISPLAY:-}${WAYLAND_DISPLAY:-} && -z ${SDL_VIDEODRIVER:-} ]]; then
     echo "No display to open a window on. On Windows 11, WSL has one built in: run" >&2
-    echo "'wsl --update' in PowerShell, then restart WSL. See docs/12-troubleshooting.md." >&2
+    echo "'wsl --update' in PowerShell, then restart WSL. See docs/13-troubleshooting.md." >&2
     exit 1
 fi
 command -v sdl2-config >/dev/null || { echo "SDL2 is missing: run tools/setup.sh" >&2; exit 1; }
@@ -60,6 +60,8 @@ done
 for pid in "${pids[@]}"; do wait "$pid"; done
 "$cxx" "$out"/obj/*.o "${sdl_libs[@]}" -lm -o "$out/hello-ps5"
 cp "$app/fonts/"* "$out/app0/assets/fonts/"
+mkdir -p "$out/app0/sce_sys" && cp "$app/sce_sys/icon0.png" "$out/app0/sce_sys/" # the About page shows it
+[[ ! -d $app/assets ]] || cp -r "$app/assets/." "$out/app0/assets/" # your own files, as app/build.sh
 
 # 3. In WSL: the controller bridge. WSL can't see a controller connected to
 #    Windows, so dualsense_bridge.py reads it on Windows and sends it here.

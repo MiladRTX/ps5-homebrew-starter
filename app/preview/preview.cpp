@@ -1,12 +1,13 @@
 /*
  * PS5 Homebrew Starter - the app's screens as PNGs on a PC, without a console
- * (docs/09-pc-preview.md). The same drawing code as on the PS5, with sample
+ * (docs/10-pc-preview.md). The same drawing code as on the PS5, with sample
  * state set by hand. Add a shot for every page and state you want to check.
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 #include "hello.hpp"
 #include "pad.hpp"
+#include "pages.hpp"
 #include "screen.hpp"
 
 #include <stdio.h>
@@ -71,16 +72,33 @@ int main(int argc, char **argv)
     shot(argv[2], "2_play");
     s.message[0] = '\0';
 
+    // Notes: more than fit, so the list scrolls. Down pressed nine times, the
+    // same code as on the console, then time for the scrolling to settle.
+    static const char *const notes[] = {
+        "Buy milk",          "Finish the menu code", "Try the touchpad on the Play page",
+        "Call Sam back",     "Ideas: a timer page",  "Check the service after rest mode",
+        "Pick a better icon", "Read chapter 8 again", "Sound: lower the clicks?",
+        "Push to GitHub",    "Write a second page",  "Backup /data/ps5-starter",
+    };
+    for (const char *note : notes)
+        (void)starter::hello::notes_add(note);
+    s.page = Page::notes;
+    for (int i = 0; i < 9; ++i)
+        (void)starter::hello::notes_update(starter::pad::down);
+    for (int i = 0; i < 60; ++i)
+        (void)starter::hello::notes_update(0);
+    shot(argv[2], "3_notes");
+
     // The Settings menu, on its second row, with a large box.
     s.page = Page::settings;
     s.menu_selected = 1;
     s.size = 2;
-    shot(argv[2], "3_settings");
+    shot(argv[2], "4_settings");
 
     // About, with an older service running than the app carries.
     s.page = Page::about;
     strcpy(s.service_version, "0.9");
     strcpy(s.message, "Updating the service from 0.9 to 1.0...");
-    shot(argv[2], "4_about_updating");
+    shot(argv[2], "5_about_updating");
     return 0;
 }

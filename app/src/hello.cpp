@@ -11,6 +11,7 @@
 #include "pages.hpp"
 #include "paths.hpp"
 #include "service_version.h" // SERVICE_VERSION: the service this app carries
+#include "sound.hpp"
 
 #include <stdio.h>
 #include <string.h>
@@ -35,6 +36,7 @@ const struct
     void (*draw)(screen::Canvas &c) noexcept;
 } pages[page_count] = {
     {"Play", play_update, play_draw},
+    {"Notes", notes_update, notes_draw},
     {"Settings", settings_update, settings_draw},
     {"About", about_update, about_draw},
 };
@@ -53,8 +55,8 @@ void save() noexcept
     if (!f)
         return;
     const State &s = g_state;
-    fprintf(f, "%d %d %d %d %d\n", static_cast<int>(s.box_x), static_cast<int>(s.box_y), s.colour,
-            s.size, s.speed);
+    fprintf(f, "%d %d %d %d %d %d\n", static_cast<int>(s.box_x), static_cast<int>(s.box_y), s.colour,
+            s.size, s.speed, s.sound);
     fclose(f);
 }
 
@@ -99,7 +101,7 @@ void check_service() noexcept
     }
 }
 
-// The tab bar: L1  Play | Settings | About  R1, at the top right.
+// The tab bar: L1  Play | Notes | Settings | About  R1, at the top right.
 void draw_tabs(screen::Canvas &c) noexcept
 {
     constexpr int h = 52, pad = 26, key_w = 52, gap = 12, size = 20;
@@ -181,22 +183,31 @@ void load() noexcept
     State &s = g_state;
     s.size = 1;
     s.speed = 1;
+    s.sound = 1;
+    s.delete_armed = -1;
+    s.editing = -2;
     centre_box();
+    notes_load();
+    // A picture to show: the app's own icon, from its sce_sys folder.
+    (void)image::load(STARTER_APP0 "/sce_sys/icon0.png", s.icon);
 
     FILE *f = fopen(save_path, "r");
-    if (!f)
-        return;
-    // A file can be old, damaged or edited by hand: check every value.
-    int x = 0, y = 0, colour = 0, size = 1, speed = 1;
-    if (fscanf(f, "%d %d %d %d %d", &x, &y, &colour, &size, &speed) >= 3)
+    if (f)
     {
-        s.box_x = static_cast<float>(x);
-        s.box_y = static_cast<float>(y);
-        s.colour = colour >= 0 && colour < colour_count ? colour : 0;
-        s.size = size >= 0 && size < size_count ? size : 1;
-        s.speed = speed >= 0 && speed < speed_count ? speed : 1;
+        // A file can be old, damaged or edited by hand: check every value.
+        int x = 0, y = 0, colour = 0, size = 1, speed = 1, sound = 1;
+        if (fscanf(f, "%d %d %d %d %d %d", &x, &y, &colour, &size, &speed, &sound) >= 3)
+        {
+            s.box_x = static_cast<float>(x);
+            s.box_y = static_cast<float>(y);
+            s.colour = colour >= 0 && colour < colour_count ? colour : 0;
+            s.size = size >= 0 && size < size_count ? size : 1;
+            s.speed = speed >= 0 && speed < speed_count ? speed : 1;
+            s.sound = sound == 0 ? 0 : 1;
+        }
+        fclose(f);
     }
-    fclose(f);
+    sound::enable(s.sound != 0);
 }
 
 bool update() noexcept
@@ -207,11 +218,14 @@ bool update() noexcept
 
     // L1 and R1 belong to the tab bar; every other button goes to the page.
     unsigned pressed = pad::poll();
+    if (s.editing != -2)
+        pressed = 0; // the keyboard is open (Notes): the page waits for it, the tabs stay
     if (pressed & (pad::l1 | pad::r1))
     {
         const int step = (pressed & pad::r1) ? 1 : page_count - 1;
         s.page = static_cast<Page>((static_cast<int>(s.page) + step) % page_count);
         pressed &= ~(pad::l1 | pad::r1);
+        sound::play(sound::Effect::move);
         redraw = true;
     }
     if (pages[static_cast<int>(s.page)].update(pressed))

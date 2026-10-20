@@ -13,6 +13,12 @@ namespace starter::pad::input
 // One controller sample: the buttons held in it (pad::Button bits).
 void sample(unsigned held) noexcept;
 
+// A sample while the system has the controller (its menu, the on-screen
+// keyboard): nothing is pressed, and a button still down when the app gets
+// the controller back isn't a new press. So the Cross that closed the
+// keyboard doesn't also press Cross in the app.
+void suspend() noexcept;
+
 // The presses since the last call: each new press once, plus repeats of a
 // held direction, L1/R1 or L2/R2 (after 350 ms, every 110 ms, then every
 // 40 ms once held for 1.5 s).

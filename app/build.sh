@@ -37,11 +37,23 @@ cp -r "$here/src" "$here/sce_sys" "$kit/starter/"
 cp "$repo/payload/service/service_version.h" "$kit/starter/src/"
 cp "$here/fonts/"* "$kit/starter/assets/fonts/"
 cp "$repo/payload/service/service.elf" "$kit/starter/assets/service.elf"
+# Your own files (pictures, data), if you made app/assets: /app0/assets on the console.
+[[ ! -d $here/assets ]] || cp -r "$here/assets/." "$kit/starter/assets/"
 bash "$kit/tools/validate-assets.sh" "$kit/starter/sce_sys"
+
+# System functions the SDK has no stubs for, as link-only stubs (app/stubs):
+# the keyboard's sceCommonDialogInitialize.
+sdk=${PS5_PAYLOAD_SDK:-$home/ps5-payload-sdk}
+mkdir -p "$kit/starter/stubs"
+PS5_PAYLOAD_SDK=$sdk sh "$kit/tooling/prospero-clang18" -O2 -Wall -Wextra -fPIC \
+    -c "$here/stubs/common_dialog.c" -o "$kit/starter/stubs/common_dialog.o"
+"$sdk/bin/prospero-lld" --shared -soname libSceCommonDialog.sprx \
+    -o "$kit/starter/stubs/libSceCommonDialog.so" "$kit/starter/stubs/common_dialog.o"
 
 # 4. Build (the kit downloads its own SDK copy the first time).
 vars=(APP_SOURCE_DIR=starter/src APP_PARAM=starter/sce_sys/param.json
-      APP_SCE_SYS=starter/sce_sys APP_ASSETS=starter/assets)
+      APP_SCE_SYS=starter/sce_sys APP_ASSETS=starter/assets
+      APP_IMPORT_STUBS=starter/stubs/libSceCommonDialog.so)
 if [[ ${1:-} == deploy ]]; then
     [[ -n ${2:-} ]] || { echo "usage: app/build.sh deploy <PS5 IP>" >&2; exit 2; }
     make -C "$kit" "${vars[@]}" deploy PS5_HOST="$2"

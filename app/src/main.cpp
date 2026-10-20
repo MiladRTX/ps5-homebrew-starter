@@ -8,6 +8,7 @@
 #include "pad.hpp"
 #include "paths.hpp"
 #include "screen.hpp"
+#include "sound.hpp"
 
 int main()
 {
@@ -15,6 +16,7 @@ int main()
     if (!starter::font::load(STARTER_APP0 "/assets/fonts/"))
         starter::screen::notify("Hello PS5: the app's fonts are missing");
     (void)starter::pad::init();
+    (void)starter::sound::init(); // without sound output the app just stays silent
     starter::hello::load();
     // Calls update about 60 times a second and draws when it returns true.
     // Never returns: the PS5 closes the app when you leave it.

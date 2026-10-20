@@ -28,7 +28,7 @@ Up 12 s, CPU 52 C, 1 requests.
 JSON: /status
 ```
 
-`/status` gives the same as JSON, for programs (the app in chapter 8 reads it):
+`/status` gives the same as JSON, for programs (the app in chapter 9 reads it):
 
 ```json
 {"name":"service","version":"1.0","uptime":12,"cpu":52,"requests":2}

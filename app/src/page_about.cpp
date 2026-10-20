@@ -101,5 +101,21 @@ void about_draw(screen::Canvas &c) noexcept
             c.text(x, y, row[0], Face::semibold, 15, Color::faint, 255, 0.08f);
         c.text(x + 220, y, row[1], Face::regular, 22, Color::text);
     }
+
+    // A picture: the app's own icon, read from its PNG at startup (hello.cpp)
+    // and drawn smaller than it is (512 pixels, here 180).
+    y += 60;
+    c.text(x, y, "ICON", Face::semibold, 15, Color::faint, 255, 0.08f);
+    constexpr int icon_px = 180;
+    if (s.icon.loaded())
+    {
+        c.image(x + 220, y - 16, icon_px, icon_px, s.icon);
+        c.round_frame(x + 220, y - 16, icon_px, icon_px, 4, 2, Color::line2);
+    }
+    else
+        c.text(x + 220, y, "icon0.png wasn't found", Face::regular, 22, Color::faint);
+    static const char *const picture[] = {"sce_sys/icon0.png,", "read with stb_image", "and scaled to fit."};
+    for (int i = 0; i < 3; ++i)
+        c.text(x + 220 + icon_px + 28, y + 14 + i * 32, picture[i], Face::regular, 20, Color::muted);
 }
 } // namespace starter::hello

@@ -1,4 +1,4 @@
-# 11. Share it
+# 12. Share it
 
 Your app works on your console. This chapter gets it onto other people's, as
 a GitHub release they can download and install.
@@ -41,10 +41,10 @@ notes.
 
 Every update is the same:
 
-1. Raise `contentVersion` in `app/sce_sys/param.json` (chapter 10).
+1. Raise `contentVersion` in `app/sce_sys/param.json` (chapter 11).
 2. Build, and make a new release with a new tag.
 
 Users copy the new folder over the old one, after closing the app. If your app
-carries a payload, have it replace the old one that's still running (chapter 8).
+carries a payload, have it replace the old one that's still running (chapter 9).
 
-Next: [Troubleshooting](12-troubleshooting.md)
+Next: [Troubleshooting](13-troubleshooting.md)

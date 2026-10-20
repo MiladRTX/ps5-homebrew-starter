@@ -1,4 +1,4 @@
-# 10. Make it yours
+# 11. Make it yours
 
 Before your app is anything more than an experiment, give it its own identity.
 Do it early: the title ID ends up in folder names and saved files, and
@@ -108,4 +108,4 @@ wrong size fails the build instead of showing a broken tile.
   its files in `app/preview/run.sh`, so add new ones there.
 - **The rest of the text on screen,** obviously.
 
-Next: [Share it](11-share-it.md)
+Next: [Share it](12-share-it.md)
