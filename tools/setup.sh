@@ -14,8 +14,11 @@ sdk_sha256=8cfbc7cd5811e719eb4f0c47eea668d3dc7b40bc8ab11c4a5031d40c23ec02da
 home=${PS5_STARTER_HOME:-$HOME/.ps5-starter}
 sdk=$home/ps5-payload-sdk
 
-# libsdl2-dev: the PC simulator's window and input (app/sim).
-packages=(clang-18 lld-18 make git curl unzip python3 python3-pil pkg-config ccache libsdl2-dev)
+# llvm-18: llvm-config-18, which the SDK's tools ask for. ninja-build, wget:
+# the app kit's build (kit/tools). socat: make send (the SDK's prospero-deploy).
+# libsdl2-dev: the PC simulator's window, input and sound (app/sim).
+packages=(clang-18 lld-18 llvm-18 make ninja-build git curl wget unzip socat python3 python3-pil
+          pkg-config ccache libsdl2-dev)
 
 missing_packages() {
     local p
@@ -39,8 +42,10 @@ report() {
         echo "payload SDK: missing"
         ok=0
     fi
-    if [[ ${PS5_PAYLOAD_SDK:-} != "$sdk" ]]; then
-        echo "PS5_PAYLOAD_SDK: not set in this shell (the build scripts find the SDK anyway)"
+    # Usually unset: the build scripts use $sdk. Set to another SDK, it wins.
+    if [[ -n ${PS5_PAYLOAD_SDK:-} && $PS5_PAYLOAD_SDK != "$sdk" ]]; then
+        echo "PS5_PAYLOAD_SDK: set to $PS5_PAYLOAD_SDK, so the builds use that SDK, not $sdk"
+        echo "  (to use the checked v0.42: unset PS5_PAYLOAD_SDK, and remove it from ~/.bashrc)"
     fi
     return $((1 - ok))
 }

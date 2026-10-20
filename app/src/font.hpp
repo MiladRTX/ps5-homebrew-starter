@@ -32,12 +32,17 @@ struct Glyph
 // Reads the faces from dir (with a trailing slash). False if any is missing.
 bool load(const char *dir) noexcept;
 
-// nullptr when the face isn't loaded; a glyph without bits for blanks.
+// Text sizes from 1 to this many pixels; outside them nothing is drawn.
+constexpr int max_px = 512;
+
+// nullptr when the face isn't loaded or px is out of range; a glyph without
+// bits for blanks. Valid until the next call (the cache may start over).
 [[nodiscard]] const Glyph *glyph(Face face, int px, std::uint32_t codepoint) noexcept;
 [[nodiscard]] float kern(Face face, int px, std::uint32_t left, std::uint32_t right) noexcept;
 // Distance from the baseline up to the top of capital letters.
 [[nodiscard]] float cap_height(Face face, int px) noexcept;
 
-// The next UTF-8 code point at s[at], moving at past it.
+// The next UTF-8 code point at s[at], moving at past it. Bytes that aren't
+// valid UTF-8 come out as U+FFFD, one at a time, never eating the text after them.
 [[nodiscard]] std::uint32_t next(const char *s, int len, int &at) noexcept;
 } // namespace starter::font

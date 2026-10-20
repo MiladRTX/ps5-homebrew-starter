@@ -64,7 +64,7 @@ struct State
     long service_cpu_c;
     char service_version[16];
     char address[40];          // where its page is: the console's address, "" without a network
-    bool service_start_tried;  // once per launch, so a broken service isn't restarted forever
+    bool service_start_tried;  // once per launch, and only before it first answered
     bool service_update_tried; // the same for replacing an older one
     std::uint64_t next_service_check_ms;
 

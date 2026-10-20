@@ -12,12 +12,14 @@
 namespace starter::link
 {
 // GET path from 127.0.0.1:port. The answer's body goes to out (cut to cap).
-// Returns the HTTP status, 0 when nothing is listening.
+// Returns the HTTP status, 0 when nothing is listening, -1 when the answer
+// isn't HTTP or the path is too long (over about 400 characters).
 int http_get(int port, const char *path, char *out, std::size_t cap) noexcept;
 
 // Sends the ELF at path (a file in the app, e.g. /app0/assets/service.elf) to
 // the ELF loader on 127.0.0.1:9021, which starts it. 0 when it was sent, -1
-// when the file can't be read, -2 when no loader answered.
+// when the file can't be read, -2 when no loader answered, -3 when it isn't an
+// ELF or is bigger than 4 MB. (The simulator: -4 when the PC program won't start.)
 int start_payload(const char *path) noexcept;
 
 // The console's address on the network, like "192.168.0.10": where a phone or

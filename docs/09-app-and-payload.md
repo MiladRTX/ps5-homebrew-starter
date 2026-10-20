@@ -12,7 +12,7 @@ background, and an **app** that shows it and lets you change it. Breeze works
 this way: the payload steers the fan while you play, and the app is the
 screen you set it up on.
 
-Hello PS5 does the same with `service.elf`, in three steps.
+Hello PS5 does the same with `service.elf`, in four steps.
 
 ## 1. The app carries the payload
 
@@ -57,18 +57,27 @@ if (!s.service_start_tried) {
 ```
 
 `start_payload` reads `/app0/assets/service.elf` and sends it to the ELF loader
-on `127.0.0.1:9021`, exactly what you did by hand in chapter 2. The loader
-starts it, the service opens its page, and two seconds later the app's next
-check finds it.
+on `127.0.0.1:9021`. That's what `make send` in chapter 2 tries, but from the
+console itself, which is why the loader accepts it: it does in code what you
+did with Payload Manager's upload page. The loader starts it, the service
+opens its page, and two seconds later the app's next check finds it.
 
-The app tries **once per launch**. If the service crashes on start, trying
-again every two seconds would just crash it again, forever. Once is enough to
-cover "not started yet". The message on screen says what went wrong if it fails:
+The app tries **once per launch**, and only until the service has answered.
+If the service crashes on start, trying again every two seconds would just
+crash it again, forever. Once is enough to cover "not started yet"; a short gap
+later, after rest mode, is the service reopening its page (chapter 4), not a
+reason to start it again. The message on screen says what went wrong if it
+fails, for a few seconds:
 
 | Message | Meaning |
 | --- | --- |
 | *service.elf is missing from the app* | the build didn't include it |
+| *service.elf is damaged or too big* | it isn't an ELF, or it's over 4 MB |
 | *No ELF loader on port 9021* | nothing listens on 9021, e.g. after rest mode (chapter 4) |
+| *Port 8080 is used by …, not this app's service* | another program has the port, like this app's service from before it was renamed (chapter 11) |
+
+The app knows its own service by the name in `/status`, `SERVICE_NAME` in
+`payload/service/service_version.h`, the file both are built with.
 
 ## 4. Older? Replace it
 

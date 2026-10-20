@@ -144,6 +144,6 @@ void settings_draw(screen::Canvas &c) noexcept
         {dpad_left, dpad_right, "change"},
         {cross, none, "change or reset"},
     };
-    hints(c, menu_x, content_y + content_h - 38, what_does_what, 3);
+    hints(c, menu_x, content_y + content_h - 38, what_does_what);
 }
 } // namespace starter::hello

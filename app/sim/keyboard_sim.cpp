@@ -120,6 +120,10 @@ bool keyboard_event(const SDL_Event &e) noexcept
         keyboard::append(e.text.text);
         return true;
     case SDL_KEYDOWN:
+        // A held key repeats: only Backspace should. A held Enter (Cross,
+        // which opened the box) mustn't also accept it.
+        if (e.key.repeat && e.key.keysym.scancode != SDL_SCANCODE_BACKSPACE)
+            return true;
         switch (e.key.keysym.scancode)
         {
         case SDL_SCANCODE_RETURN:
@@ -132,8 +136,8 @@ bool keyboard_event(const SDL_Event &e) noexcept
         case SDL_SCANCODE_BACKSPACE:
             keyboard::erase_last();
             break;
-        case SDL_SCANCODE_V:
-            if (e.key.keysym.mod & KMOD_CTRL)
+        default: // Ctrl+V, by the letter on the key (any keyboard layout)
+            if (e.key.keysym.sym == SDLK_v && (e.key.keysym.mod & KMOD_CTRL))
                 if (char *clip = SDL_GetClipboardText())
                 {
                     for (char *p = clip; *p; ++p) // one line
@@ -142,8 +146,6 @@ bool keyboard_event(const SDL_Event &e) noexcept
                     keyboard::append(clip);
                     SDL_free(clip);
                 }
-            break;
-        default:
             break;
         }
         return true;

@@ -51,7 +51,7 @@ the handler only sets a flag:
 ```c
 static void on_resume(int sig) { s_resumed = 1; }
 ...
-signal(SIGCONT, on_resume);
+catch_signal(SIGCONT, on_resume);
 ```
 
 In Breeze's testing on a PS5 Slim, the address check is what caught it every
@@ -75,6 +75,7 @@ if (server < 0 && addr[0]) {            /* there's a network again */
     else if (now >= reopen_at) {
         server = open_server();
         reopen_at = server >= 0 ? 0 : now + 10;   /* failed: retry in 10 s */
+        /* and a notification with the new address, if it changed */
     }
 }
 ```
@@ -99,7 +100,8 @@ same port again shortly after closing it can fail.
   next run (`time() + 3600`) and compare against `time()`, rather than counting
   loop turns. After waking, the comparison simply says it's due.
 - **A new address.** If you showed the address in a notification, show the new
-  one. Users will look for the page at the old address otherwise.
+  one. Users will look for the page at the old address otherwise. The service
+  does: when the page reopens on a different address, it notifies it again.
 - **The ELF loader may be gone.** An app that starts its payload through the
   loader (chapter 9) can find nothing on port 9021 after rest mode. Say so on
   screen instead of failing silently.
@@ -113,10 +115,10 @@ same port again shortly after closing it can fail.
 4. Read the log:
 
 ```
-[14:20:03] net: address '192.168.0.10' -> ''
-[14:20:03] web: closing the page until the network is back
-[14:21:10] net: address '' -> '192.168.0.10'
-[14:21:12] web: listening on port 8080
+[2026-10-20 14:20:03] net: address '192.168.0.10' -> ''
+[2026-10-20 14:20:03] web: closing the page until the network is back
+[2026-10-20 14:21:10] net: address '' -> '192.168.0.10'
+[2026-10-20 14:21:12] web: listening on port 8080
 ```
 
 Do this test for every payload that serves anything. Most people only notice

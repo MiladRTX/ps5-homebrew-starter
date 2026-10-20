@@ -5,24 +5,40 @@ what you see.
 
 ## Building
 
-**`$'\r': command not found`, or `bad interpreter`**
-The scripts got Windows line endings, usually from a Git checkout on Windows.
-Fix the files with `sed -i 's/\r$//' tools/setup.sh app/build.sh app/preview/run.sh`,
-and stop it from happening again with `git config --global core.autocrlf false`
-before cloning. The repository's `.gitattributes` asks Git for Linux line
-endings too.
+**`env: 'bash\r': No such file or directory`** (or `'python3\r'`), **or
+`set: pipefail: invalid option name`**
+The scripts got Windows line endings: from copying or unzipping the project
+instead of cloning it with Git, or from a Windows editor. Fix every script at
+once, from the starter's folder:
+
+```bash
+find . -path ./build -prune -o -type f \( -name '*.sh' -o -name '*.py' -o -name 'prospero-clang18' \) -exec sed -i 's/\r$//' {} +
+```
+
+Or clone it again with Git: the repository's `.gitattributes` asks for Linux
+line endings.
+
+**`Unable to locate package clang-18`**
+Your Ubuntu is older than 24.04. Install a newer one next to it:
+`wsl --install -d Ubuntu-24.04` (chapter 1).
+
+**`Install ninja-build first`, or `socat: command not found`**
+Your setup is from before `tools/setup.sh` installed them. Run
+`tools/setup.sh` again.
 
 **`No payload SDK at ...: run tools/setup.sh first`**
-Exactly that. If you installed the SDK somewhere else, point to it:
-`make PS5_PAYLOAD_SDK=/path/to/ps5-payload-sdk`.
+Exactly that. If you installed the SDK somewhere else, tell the builds where:
+for one command, `make -C payload/hello PS5_PAYLOAD_SDK=/path/to/ps5-payload-sdk`
+or `PS5_PAYLOAD_SDK=/path/to/ps5-payload-sdk app/build.sh`; for every command,
+`export PS5_PAYLOAD_SDK=/path/to/ps5-payload-sdk` (in `~/.bashrc` to keep it).
 
 **Odd failures in a folder with spaces in its path**
 The kit's scripts can't handle spaces, which is why `app/build.sh` builds the
 kit in `~/.ps5-starter/kit-work`. Your own scripts should quote every path (`"$dir"`).
 
 **The first app build fails while downloading**
-The kit downloads its SDK and zlib on the first build. Run it again. Nothing
-is half-installed; it starts the failed download over.
+The kit downloads zlib on the first build. Run it again. Nothing is
+half-installed; it starts the failed download over.
 
 **`undefined symbol: sce...` when the app links**
 The payload SDK has no stub for that system function. Add a link-only stub
@@ -93,8 +109,15 @@ folder the build made, not just `eboot.bin`.
 - Check you copied the new build: look at the file times in `build/app/`.
 
 **The background service says "Not running"**
-- The message at the bottom tells you which: no ELF loader on port 9021, or
-  `service.elf` missing from the app.
+- Right after the app opens, the message at the bottom says why, for a few
+  seconds: no ELF loader on port 9021, `service.elf` missing or damaged, or
+  port 8080 used by another program (chapter 9 has the list). Missed it?
+  Close the app and open it again.
+- *Port 8080 is used by service*, after renaming the app: that's the old
+  service from before the rename. Restart the console, or stop it in Payload
+  Manager (chapter 11).
+- The service's notification says *port 8080 is busy*: another payload has
+  the port. Change `PORT` in `service.c` and `service_port` in `hello.hpp`.
 - After rest mode, the loader may have stopped answering. Restart it, then
   reopen the app.
 - If the loader is fine, the service started and then crashed: read its log.
@@ -107,9 +130,10 @@ WSL shows Linux windows on your Windows desktop with its built-in display
 open Ubuntu again. On Linux, run it from a desktop session.
 
 **The simulator says the service isn't running**
-- Another program on your PC may use port 8080. The service's log says so:
-  `build/sim/data/ps5-starter/service.log`. Change the port in `service.c`
-  (`PORT`) and in `hello.hpp` (`service_port`).
+- Another program on your PC may use port 8080: the message at the bottom
+  says *Port 8080 is used by ...*, and the service's log says so too:
+  `build/sim/data/<your app's folder>/service.log`. Change the port in
+  `service.c` (`PORT`) and in `hello.hpp` (`service_port`).
 - A service left over from an earlier run may be stuck: `app/sim/run.sh stop`,
   then run the simulator again.
 
@@ -117,11 +141,15 @@ open Ubuntu again. On Linux, run it from a desktop session.
 Read `build/sim/bridge.log` (chapter 10 explains the bridge):
 - *no controller yet*: turn it on, or connect it. The bridge keeps looking,
   every second.
-- No log, or `no Python on Windows`: install Python from python.org, then run
-  the simulator again.
-- `no simulator on port 9278`, or the simulator says `port 9278 is busy`:
-  something else uses that port. Pick another for both:
-  `STARTER_SIM_BRIDGE_PORT=9300 app/sim/run.sh`.
+- No log, or `no Python on Windows`: install Python from python.org (the 64-bit
+  one), then run the simulator again. A log saying *Python was not found* is
+  Windows' Microsoft Store stand-in: install the real one.
+- `needs 64-bit x86 Python`, or *not a valid Win32 application*: your Windows
+  Python is 32-bit or ARM. Install the 64-bit x86 Python from python.org.
+- `no simulator on port 9278`, or the simulator says `port 9278 is busy`: a
+  PC service from an older version of the starter may hold it. Run
+  `app/sim/run.sh stop` first. Still busy? Something else uses that port:
+  pick another for both, `STARTER_SIM_BRIDGE_PORT=9300 app/sim/run.sh`.
 
 The keyboard always works.
 

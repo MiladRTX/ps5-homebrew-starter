@@ -16,6 +16,10 @@ Restart when it asks, then open **Ubuntu** from the Start menu and pick a user
 name and password. From now on, every command in this guide runs in that
 Ubuntu window unless it says otherwise.
 
+The starter needs **Ubuntu 24.04 or newer** (for clang 18). If you already had
+Ubuntu in WSL, check with `lsb_release -d`. If it says 22.04 or older, run
+`wsl --install -d Ubuntu-24.04` instead and use that one.
+
 Your Windows drives are inside WSL under `/mnt/`: `C:\Users\you\Documents` is
 `/mnt/c/Users/you/Documents`.
 
@@ -35,6 +39,11 @@ cd ps5-homebrew-starter
 Cloning inside WSL, rather than into a Windows folder, makes builds much
 faster: WSL reads its own files quicker than Windows' drives.
 
+From Windows, the folder is `\\wsl.localhost\Ubuntu\home\<your user>\ps5-homebrew-starter`
+(in File Explorer and in file dialogs, under **Linux > Ubuntu**). Run
+`explorer.exe .` in the Ubuntu window to open the folder you're in. That's how
+you'll pick files there in a browser or an FTP program.
+
 ## Install the tools
 
 ```bash
@@ -43,9 +52,10 @@ tools/setup.sh
 
 This does two things:
 
-1. It installs the compiler (clang 18), the linker, make, git, Python, SDL2
-   (for running apps in a window on your PC, chapter 10) and a few helpers with
-   `apt`. It asks for your password once.
+1. It installs the compiler (clang 18), the linker, make and ninja (the build
+   tools), git, Python, SDL2 (for running apps in a window on your PC,
+   chapter 10) and a few helpers with `apt`, like socat for sending payloads.
+   It asks for your password once.
 2. It downloads the **PS5 payload SDK** v0.42 and checks it against its known
    SHA-256 before using it, so a broken or tampered download is refused. It
    goes into `~/.ps5-starter/ps5-payload-sdk`; nothing else on your system changes.
@@ -73,10 +83,15 @@ based on FreeBSD:
 - `samples/`: small programs for one feature each. Worth a read once you've
   finished chapter 2.
 
-The app kit used in chapter 5 downloads its own copy of the same SDK, so you
-don't set anything up for it.
+The app kit used in chapter 5 uses this same SDK, so you don't set anything up
+for it.
 
 ## On the console
+
+This guide starts with a console that already runs homebrew, with an ELF
+loader, Payload Manager, ShadowMountPlus and an FTP server (ftpsrv, port 2121)
+running. [Check your console first](../README.md#check-your-console-first)
+has the links and a one-minute check.
 
 Find your PS5's IP address: **Settings → Network → Connection Status → View
 Connection Status**, the IPv4 address. You'll use it to copy files over FTP and,

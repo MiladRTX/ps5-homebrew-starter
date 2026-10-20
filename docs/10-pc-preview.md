@@ -31,6 +31,9 @@ A window opens with Hello PS5 running, and you use it like on the console:
 | Touchpad | drag with the mouse |
 | (close the app) | Esc, or close the window |
 
+The letters count by what's printed on the key, so Z is Square on a QWERTZ or
+AZERTY keyboard too.
+
 When the app opens the on-screen keyboard (Triangle on the Notes page), a
 text box takes its place and your keys type: **Enter** is OK, **Esc** cancels.
 
@@ -58,7 +61,9 @@ Most of the app runs exactly as on the PS5, not imitated:
 - **Files:** `build/sim/data` stands in for `/data`, and `build/sim/app0`
   for the app's own folder. The saved settings are in
   `build/sim/data/ps5-starter/hello-app.txt`.
-- **Notifications** pop up in the window's corner, and in the terminal.
+- **Notifications:** the app's pop up in the window's corner and in the
+  terminal. The service's (like *service is running*) go to its log,
+  `build/sim/data/ps5-starter/service.log`, as `notify:` lines.
 - **Sound:** the same effects, made by the same code, out of your PC's speakers.
 
 Only a few things are swapped for PC versions, all in
@@ -78,7 +83,7 @@ they work in both places:
 
 ```cpp
 #include "paths.hpp"
-FILE *f = fopen(STARTER_DATA "/my-app/settings.txt", "r");
+FILE *f = fopen(STARTER_APP_DATA "/settings.txt", "r"); // this app's folder in /data
 ```
 
 ### Trying an update
@@ -101,7 +106,8 @@ STARTER_SIM_SCRIPT="r1 r1 down right shot:settings.ppm quit" app/sim/run.sh
 ```
 
 That opens Settings (R1 twice), chooses the second row, changes it, saves a
-picture of the screen in `build/sim`, and closes. Steps run in order:
+picture of the screen in `build/sim`, and closes. Steps run in order, separated
+by spaces or new lines:
 
 | Step | Does |
 | --- | --- |
@@ -133,8 +139,10 @@ port 9278). You don't start or stop it yourself:
 Controller bridge: started (build/sim/bridge.log). Turn your controller on any time.
 ```
 
-- It needs **Python on Windows** ([python.org](https://www.python.org)), and
-  nothing else to install: just Python's own modules.
+- It needs **64-bit Python on Windows** ([python.org](https://www.python.org)),
+  and nothing else to install: just Python's own modules. (The `python.exe`
+  Windows has before you install Python only points to the Microsoft Store;
+  the bridge looks past it.)
 - It reads the controller with **SDL2.dll**, the official Windows build of the
   same SDL2 the simulator uses. The first run downloads it once, from SDL's
   GitHub releases, and checks it against its known SHA-256 before using it.
@@ -148,7 +156,7 @@ Controller bridge: started (build/sim/bridge.log). Turn your controller on any t
   ```
 
 - To check it without the simulator, in PowerShell:
-  `python $env:LOCALAPPDATA\ps5-starter\dualsense_bridge.py --sdl $env:LOCALAPPDATA\ps5-starter\SDL2.dll --check`
+  `py $env:LOCALAPPDATA\ps5-starter\dualsense_bridge.py --sdl $env:LOCALAPPDATA\ps5-starter\SDL2.dll --check`
 - `STARTER_SIM_CONTROLLER=0 app/sim/run.sh` runs without it.
 
 > Over Bluetooth, a DualSense only reports its touchpad in an extended mode,
@@ -186,8 +194,8 @@ app/preview/run.sh
 5_about_updating.png
 ```
 
-They're in `build/preview/`. Open them from Windows with `explorer.exe build/preview`
-from WSL.
+They're in `build/preview/`. To open the folder in Windows' Explorer from WSL:
+`explorer.exe "$(wslpath -w build/preview)"`.
 
 ![The preview's second shot](images/hello-ps5.png)
 

@@ -66,6 +66,9 @@ fprintf(s_log, "[%s] ", stamp);
 fflush(s_log);
 ```
 
+A service runs for months, so its log mustn't grow forever: over 1 MB at
+startup, `open_log()` keeps it as `service.log.old` and starts a new one.
+
 The log is `/data/ps5-starter/service.log`. Read it over FTP any time:
 
 ```bash
@@ -86,14 +89,16 @@ last lines are already on disk, and those are the ones you need.
 ```c
 static void on_stop(int sig) { s_running = 0; }
 ...
-signal(SIGTERM, on_stop);
+catch_signal(SIGTERM, on_stop);
 while (s_running) { ... }
 /* cleanup */
 ```
 
 A signal handler can interrupt your code anywhere, so it should only set a
 flag. The main loop checks the flag and does the actual cleanup: close the
-socket, close the log, release the lock.
+socket, close the log, release the lock. `catch_signal()` is `signal()` with
+one difference: the signal also cuts short a wait in progress (like a `recv`),
+so a stop request is noticed at once instead of after the wait.
 
 **`SIGKILL` can't be caught.** Payload Manager's "kill" sends `SIGKILL`: the
 process just ends, and your cleanup never runs. If your payload changes
@@ -117,6 +122,13 @@ first. So one thread serves the page and also does the periodic work, with no
 locking to think about. For a status page that's plenty. A busier server
 would use a thread.
 
+One thread doing everything has one catch: while it waits for a visitor, it
+does nothing else. So every visitor gets **1 second** (`SO_RCVTIMEO` on its
+connection). Without that, a browser's spare connection or a port scanner
+that connects and says nothing would stall the whole service, rest-mode
+handling and stop requests included. Anything but `/` and `/status` (like the
+`/favicon.ico` browsers ask for) gets a short *404 Not Found*.
+
 Two lines that save you a crash:
 
 ```c
@@ -131,7 +143,8 @@ an ordinary error from `send()`.
 ## Small things that help
 
 - `sceKernelSetProcessName("service.elf")`: loaders name every payload
-  `payload.elf`. With a name, you can tell yours apart in process lists.
+  `payload.elf`. With a name, you can tell yours apart in process lists. Keep
+  it to 19 characters, `.elf` included: that's all a process list shows.
 - `__attribute__((weak))` on system functions you can live without: the
   payload still loads on a firmware that lacks one.
 - Everything the payload keeps goes in its own folder, `/data/ps5-starter/`.

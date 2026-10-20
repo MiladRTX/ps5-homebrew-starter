@@ -2,6 +2,8 @@
 # ps5-native-app-boilerplate - Native Linux/WSL application build.
 # Copyright (C) 2026 BlackBearReloaded
 # SPDX-License-Identifier: GPL-3.0-or-later
+# Modified 2026-10-20 for PS5 Homebrew Starter: APP_IMPORT_STUBS (link-only stubs
+# for system libraries the SDK lacks), from the boilerplate's later version.
 #
 # Compiles, links, signs, validates, and assembles the root skeleton app.
 

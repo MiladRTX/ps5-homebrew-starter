@@ -71,6 +71,7 @@ std::uint16_t g_placeholder[64];
 char g_text[max_length * 4 + 1];
 bool g_ready = false;
 bool g_open = false;
+std::uint64_t g_closing_ms = 0; // when closing it was first refused, 0: not yet
 std::uint64_t g_opened_ms = 0;
 
 // UTF-8 in, UTF-16 out (what the dialog reads), at most `room` units with the 0.
@@ -162,6 +163,7 @@ bool open(const char *title, const char *placeholder, const char *text, int leng
     g_text[0] = '\0';
     g_open = true;
     g_opened_ms = screen::now_ms();
+    g_closing_ms = 0;
     return true;
 }
 
@@ -185,9 +187,19 @@ State poll() noexcept
         }
     }
     // Still closing: the controller isn't the app's again until this works.
+    // But not forever: a finished keyboard gets 2 s, and one that isn't
+    // running at all (status 0 or an error) can't be closing.
     if (sceImeDialogTerm() < 0)
-        return State::open;
+    {
+        const std::uint64_t now = screen::now_ms();
+        if (!g_closing_ms)
+            g_closing_ms = now;
+        if (status == 2 && now - g_closing_ms < 2000)
+            return State::open;
+        state = State::failed;
+    }
     g_open = false;
+    g_closing_ms = 0;
     return state;
 }
 

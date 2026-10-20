@@ -77,11 +77,17 @@ int http_get(int port, const char *path, char *out, std::size_t cap) noexcept
     if (fd < 0)
         return 0;
     char reply[4096];
-    char head[256];
+    char head[512];
     const int hlen = snprintf(head, sizeof head,
                               "GET %s HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n", path);
+    if (hlen <= 0 || hlen >= static_cast<int>(sizeof head))
+    {
+        // A path this long would be cut off: don't send half a request.
+        (void)close(fd);
+        return -1;
+    }
     size_t len = 0;
-    if (hlen > 0 && send_all(fd, head, static_cast<size_t>(hlen)))
+    if (send_all(fd, head, static_cast<size_t>(hlen)))
     {
         while (len < sizeof reply - 1)
         {
@@ -129,17 +135,22 @@ int start_payload(const char *path) noexcept
     posix_spawn_file_actions_addopen(&files, 0, "/dev/null", O_RDONLY, 0);
     posix_spawn_file_actions_addopen(&files, 1, "/dev/null", O_WRONLY, 0);
     posix_spawn_file_actions_adddup2(&files, 1, 2);
+#if defined(__GLIBC__) && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 34))
+    // Nothing else of the simulator's either (its sockets, its window): the
+    // service outlives it, and would keep them open.
+    posix_spawn_file_actions_addclosefrom_np(&files, 3);
+#endif
     char *argv[] = {program, nullptr};
     pid_t pid = 0;
     const int r = posix_spawn(&pid, program, &files, &attr, argv, environ);
     posix_spawn_file_actions_destroy(&files);
     posix_spawnattr_destroy(&attr);
-    return r == 0 ? 0 : -2;
+    return r == 0 ? 0 : -4;
 }
 #else
 int start_payload(const char *path) noexcept
 {
-    static unsigned char elf[1 << 20]; // 1 MB is plenty for a payload
+    static unsigned char elf[4 << 20]; // 4 MB is plenty for a payload
     const int file = open(path, O_RDONLY);
     if (file < 0)
         return -1;
@@ -155,7 +166,7 @@ int start_payload(const char *path) noexcept
     }
     (void)close(file);
     if (len < 64 || len == sizeof elf || memcmp(elf, "\x7f" "ELF", 4) != 0)
-        return -1;
+        return -3; // damaged, not an ELF, or too big
 
     // The loader starts whatever ELF arrives on its port, then the
     // connection closes. Nothing else to it.

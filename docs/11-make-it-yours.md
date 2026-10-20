@@ -15,7 +15,7 @@ tools/new-app.py "Fan Tools" PPSA12345
 ```
 Hello PS5 (PPSA99901) -> Fan Tools (PPSA12345)
   data folder: /data/ps5-starter -> /data/fan-tools
-  service:     service.elf -> fan-tools-service.elf
+  service:     service.elf -> fan-tools.elf
   content ID:  UP9000-PPSA12345_00-FANTOOLS00000001
   ...
   icon: a placeholder with "FT" (replace it with your own 512x512 PNG)
@@ -27,12 +27,22 @@ In one go, it changes everything that names the app:
 - the name on screen, in notifications and in the simulator's window
 - the data folder in `/data`, made from the name (`/data/fan-tools`), in the
   app, the service and the simulator
-- the service's process name (`fan-tools-service.elf`)
-- the icon: a placeholder with your initials, until you make a real one
+- the service's name (`fan-tools.elf`; short names get `-service`, like
+  `my-app-service.elf`, as long as it fits the 19 characters a process list shows)
+- the icon: a placeholder with your initials, until you make a real one (a
+  later run keeps yours; `--new-icon` makes a placeholder anyway)
 
-Add `--dry-run` to see the changes first. Run it again any time to rename
-again. It checks every change before making any, so a file you edited by hand
-can't leave it half done: it stops and tells you which one.
+Add `--dry-run` to see the changes first. Run it again to rename again, as
+long as the starter's files still have their names: run it before you rename
+`hello.cpp` or the others. It checks every change before making any, so a file
+you edited by hand can't leave it half done: it stops and tells you which one.
+That includes code of yours that still names the old data folder: use
+`STARTER_APP_DATA` from `paths.hpp` for your files, and it moves with the rest.
+
+**The old service is still running.** The service from before the rename
+keeps port 8080 until it's stopped. `new-app.py` stops the simulator's. On the
+console, restart it or stop the old `service.elf` in Payload Manager: until
+then the app says *Port 8080 is used by service, not this app's service*.
 
 The rest of this chapter explains what it changes and why, and the parts it
 leaves to you: the version number, the icon and art, and your code's own names.
@@ -42,8 +52,8 @@ leaves to you: the version number, the icon and art, and your code's own names.
 The title ID is the app's permanent identity: its folder name on the console
 (`/data/homebrew/PPSA99901`) and the `titleId` in `param.json`.
 
-- **Format:** four capital letters and five digits, like `PPSA01234`. PS5 apps
-  use `PPSA`.
+- **Format:** `PPSA` and five digits, like `PPSA01234`. The build refuses
+  anything else.
 - **Pick one nobody uses.** Two apps with the same title ID can't both be on
   one console. The
   [ps5-homebrew-catalog](https://github.com/darkxex/ps5-homebrew-catalog/tree/main/apps)
@@ -104,8 +114,9 @@ wrong size fails the build instead of showing a broken tile.
 - **The service's port:** 8080 is popular, so pick something less common.
   Change `PORT` in `service.c` and `service_port` in `hello.hpp`.
 - **The code:** rename `hello.cpp` and the `starter::` namespace to whatever
-  your app is. The app build takes every file in `app/src`; the preview lists
-  its files in `app/preview/run.sh`, so add new ones there.
+  your app is, once `new-app.py` has done its part (it looks for the starter's
+  file names). The app build and the simulator take every file in `app/src`;
+  the preview lists its files in `app/preview/run.sh`, so add new ones there.
 - **The rest of the text on screen,** obviously.
 
 Next: [Share it](12-share-it.md)

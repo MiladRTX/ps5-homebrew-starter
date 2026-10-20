@@ -22,8 +22,10 @@ one, **Square** deletes it (press it twice), **L2** and **R2** jump a page.
 
 ## A list that scrolls
 
-The notes are an array of strings, saved one per line in
-`/data/ps5-starter/notes.txt`. Two numbers turn them into a list on screen:
+The notes are an array of up to 50 strings, saved one per line in
+`/data/ps5-starter/notes.txt`. Saving writes `notes.txt.tmp` first and then
+swaps it in, so a write that fails halfway (full storage, the app closed
+mid-write) never costs the notes. Two numbers turn them into a list on screen:
 
 ```cpp
 int notes_selected; // the highlighted row
@@ -114,7 +116,7 @@ using namespace buttons;
 static const Hint what_does_what[] = {
     {dpad_up, dpad_down, "choose"}, {l2, r2, "page"}, {triangle, none, "new"},
 };
-hints(c, x, y, what_does_what, 3);              // a row of icons and words
+hints(c, x, y, what_does_what);                 // a row of icons and words
 buttons::draw(c, buttons::cross, x, y, 40);     // or one icon, 40 pixels
 ```
 
@@ -188,8 +190,12 @@ make ... APP_IMPORT_STUBS=starter/stubs/libSceCommonDialog.so
 The kit only reads the stub's function names and its library name. The body
 never runs: when the app starts, the console connects the call to the real
 `sceCommonDialogInitialize` in its own `libSceCommonDialog.sprx`. Any other
-system function the SDK lacks works the same way: a stub file, built with
-`-soname <its library>.sprx`, added to `APP_IMPORT_STUBS`.
+system function the SDK lacks works the same way. One from libSceCommonDialog
+too goes into `common_dialog.c`, next to `sceCommonDialogInitialize`. One from
+another library gets its own file in `app/stubs/`: in `app/build.sh`, copy the
+two lines that build `common_dialog.c` for it, with `-soname <its library>.sprx`,
+and add its `.so` to `APP_IMPORT_STUBS` (several are separated by spaces).
+`app/build.sh` only builds the stubs it names.
 
 ## Sound
 
@@ -215,6 +221,10 @@ sounds means changing numbers:
 ```cpp
 {700, 1400, 75, 0.20f, Wave::sine}, // select: 700 Hz up to 1400 Hz in 75 ms, at 20% volume
 ```
+
+A new effect is a name in `Effect` (`sound.hpp`, above `count`) and a row in
+the table, in the same place. The build checks both: a missing row, a length
+of 0 or a volume over 1 stops it with a message saying so.
 
 **How it plays.** Sound is a stream of numbers, 48,000 a second for each ear.
 `render()` works them out a batch at a time. On the PS5, a thread hands each

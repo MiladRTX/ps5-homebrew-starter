@@ -7,7 +7,7 @@ sends its buttons, sticks, triggers and touchpad to the simulator about 120
 times a second. app/sim/run.sh starts it by itself, and it ends when the
 simulator closes.
 
-    python dualsense_bridge.py --sdl C:\\path\\to\\SDL2.dll [--port 9278]
+    py dualsense_bridge.py --sdl C:\\path\\to\\SDL2.dll [--port 9278]
 
 It needs only Python itself (its own modules) and SDL2.dll.
 SPDX-License-Identifier: GPL-3.0-or-later
@@ -125,7 +125,13 @@ def main():
                         help="show which controller it finds, then stop")
     args = parser.parse_args()
 
-    sdl = load_sdl(args.sdl)
+    try:
+        sdl = load_sdl(args.sdl)
+    except OSError as e:
+        # The DLL is SDL's 64-bit x86 build: a 32-bit or ARM Python can't load it.
+        log(f"couldn't load SDL2.dll ({e}). It needs 64-bit x86 Python; this one is "
+            f"{struct.calcsize('P') * 8}-bit. Install the 64-bit Python from python.org.")
+        return 1
     # No window here, so read the controller in the background too.
     sdl.SDL_SetHint(b"SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS", b"1")
     # A DualSense over Bluetooth only reports its touchpad in its extended

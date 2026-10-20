@@ -38,6 +38,18 @@ constexpr Tone tones[] = {
     {900, 450, 90, 0.18f, Wave::sine},          // back: a falling tone
     {170, 150, 150, 0.14f, Wave::soft_square},  // error: a low buzz
 };
+// The build stops here if the table and Effect (sound.hpp) don't match, or a
+// tone can't be played.
+static_assert(sizeof tones / sizeof tones[0] == static_cast<int>(Effect::count),
+              "sound.cpp: one tones[] row per sound::Effect, in the same order");
+constexpr bool tones_ok() noexcept
+{
+    for (const Tone &t : tones)
+        if (t.ms <= 0 || t.from <= 0 || t.to <= 0 || t.volume < 0 || t.volume > 1)
+            return false;
+    return true;
+}
+static_assert(tones_ok(), "sound.cpp: each tone needs ms > 0, from and to > 0 Hz, volume 0 to 1");
 
 std::atomic<bool> g_enabled{true};
 std::atomic<int> g_request{-1}; // the effect play() asked for, -1 none
@@ -66,7 +78,7 @@ void render(std::int16_t *out, int frames) noexcept
 {
     // A new effect cuts off the one playing.
     const int request = g_request.exchange(-1, std::memory_order_relaxed);
-    if (request >= 0)
+    if (request >= 0 && request < static_cast<int>(sizeof tones / sizeof tones[0]))
     {
         g_tone = &tones[request];
         g_at = 0;
@@ -98,6 +110,9 @@ void render(std::int16_t *out, int frames) noexcept
             if (++g_at >= g_length)
                 g_tone = nullptr;
         }
+        // Within -1..1 before it becomes 16 bits: louder would wrap round to
+        // a crackle, not just clip.
+        sample = sample > 1.0f ? 1.0f : sample < -1.0f ? -1.0f : sample;
         const auto s = static_cast<std::int16_t>(sample * 32767.0f);
         out[2 * i] = s;     // left
         out[2 * i + 1] = s; // right

@@ -4,7 +4,7 @@
 #   make send PS5_HOST=<PS5 IP>   send it to an ELF loader on port 9021
 #   make clean
 
-PS5_PAYLOAD_SDK ?= $(HOME)/.ps5-starter/ps5-payload-sdk
+PS5_PAYLOAD_SDK ?= $(or $(PS5_STARTER_HOME),$(HOME)/.ps5-starter)/ps5-payload-sdk
 PS5_HOST ?=
 PS5_PORT ?= 9021
 

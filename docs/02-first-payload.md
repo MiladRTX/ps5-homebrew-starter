@@ -9,7 +9,7 @@ That makes payloads the easiest place to start: one C file, one command.
 
 ## The code
 
-[`payload/hello/hello.c`](../payload/hello/hello.c), all of it:
+[`payload/hello/hello.c`](../payload/hello/hello.c), part by part:
 
 ```c
 typedef struct notify_request {
@@ -27,11 +27,26 @@ this, and call it. The SDK links your program against the console's library,
 and the loader connects the call to the real function when the payload starts.
 
 ```c
+static void notify(const char *message) {
+    notify_request_t request;
+    memset(&request, 0, sizeof request);
+    snprintf(request.message, sizeof request.message, "%s", message);
+    sceKernelSendNotificationRequest(0, &request, sizeof request, 0);
+}
+```
+
+To use it: clear the whole request, copy the text into `message`, then hand the
+request and its size to the system.
+
+```c
 int main(void) {
     notify("Hello from my first payload!");
 
     FILE *f = fopen("/data/hello.txt", "w");
-    ...
+    if (f) {
+        fprintf(f, "hello.elf ran\n");
+        fclose(f);
+    }
     return 0;
 }
 ```
@@ -55,9 +70,10 @@ That's `payload/hello/hello.elf`, ready to run.
 
 Pick whichever your console has.
 
-**With Payload Manager.** Open its dashboard in a browser on your phone or PC
-(usually `http://<PS5 IP>:8084`), choose **Upload ELF Payload**, pick
-`hello.elf`, then launch it.
+**With Payload Manager.** Open its dashboard in a browser on your PC (usually
+`http://<PS5 IP>:8084`), choose **Upload ELF Payload**, pick `hello.elf`, then
+launch it. To find the file from Windows, run `explorer.exe payload/hello` in
+the Ubuntu window (chapter 1).
 
 **With an ELF loader that accepts network connections.** Send it straight from WSL:
 
@@ -66,7 +82,9 @@ make -C payload/hello send PS5_HOST=192.168.0.10     # your PS5's address
 ```
 
 If that says *connection refused*, your loader only listens on the console
-itself. Use Payload Manager instead.
+itself. Use Payload Manager instead. (`make send` uses socat, which
+`tools/setup.sh` installs: if it says *socat: command not found*, run
+`tools/setup.sh` again.)
 
 ## See it work
 

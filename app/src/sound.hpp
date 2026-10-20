@@ -17,6 +17,8 @@ enum class Effect
     select, // a bright chirp: something happened (Cross)
     back,   // a falling tone: closed, cancelled, deleted
     error,  // a low buzz: not possible, or "press again"
+    count,  // not an effect: how many there are. Keep it last; a new effect
+            // goes above it and needs its row in tones[] in sound.cpp.
 };
 
 // Starts the sound output. False when there's none: the app then just stays

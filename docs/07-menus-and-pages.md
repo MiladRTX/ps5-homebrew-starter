@@ -121,7 +121,9 @@ Say you want a **Box shape** setting, square or round:
    in the table. Raise `row_count`.
 3. Save and load it: add it to `save()` and `load()` in `hello.cpp`. Check
    the loaded value is in range, like the others.
-4. Use it: in `play_draw()`, draw a `c.circle(...)` when it's round.
+4. Use it: in `play_draw()` (page_play.cpp), draw a `c.circle(...)` instead of
+   the rounded square when it's round, and the same for the preview box in
+   `settings_draw()` (page_settings.cpp), so the change shows at once.
 
 ## Good menu habits
 

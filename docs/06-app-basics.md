@@ -10,11 +10,15 @@ goes through the basics, mostly with the **Play** page,
 [`main.cpp`](../app/src/main.cpp) is short:
 
 ```cpp
-starter::font::load("/app0/assets/fonts/");
+starter::font::load(STARTER_APP0 "/assets/fonts/");
 starter::pad::init();
+starter::sound::init();   // the sound output (chapter 8)
 starter::hello::load();
 starter::screen::run(starter::hello::update, starter::hello::draw);
 ```
+
+`STARTER_APP0` ([`paths.hpp`](../app/src/paths.hpp)) is `/app0`, the app's own
+folder, on the console, and the simulator's stand-in for it on a PC (chapter 10).
 
 `screen::run` never returns. It calls your two functions:
 

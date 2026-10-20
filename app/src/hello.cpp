@@ -44,8 +44,8 @@ const struct
 
 // ---- Where things are kept -------------------------------------------------
 // /data is the console's own storage: it survives reboots and app updates.
-constexpr const char *data_dir = STARTER_DATA "/ps5-starter";
-constexpr const char *save_path = STARTER_DATA "/ps5-starter/hello-app.txt";
+constexpr const char *data_dir = STARTER_APP_DATA;
+constexpr const char *save_path = STARTER_APP_DATA "/hello-app.txt";
 // The service payload, packaged inside the app (app/build.sh copies it there).
 constexpr const char *service_elf = STARTER_APP0 "/assets/service.elf";
 
@@ -72,15 +72,33 @@ void check_service() noexcept
         s.address[0] = '\0';
     char body[512];
     const int status = link::http_get(service_port, "/status", body, sizeof body);
-    s.service_up = status == 200;
-    if (!s.service_up)
+    // Ours answers with its name and uptime. Anything else answering on the
+    // port is another program: a web server, or the service of this app from
+    // before tools/new-app.py renamed it.
+    char name[32];
+    link::json_text(body, "name", name, sizeof name);
+    s.service_up = status == 200 && link::json_number(body, "uptime", -1) >= 0 &&
+                   strcmp(name, SERVICE_NAME) == 0;
+    if (s.service_up)
+        s.service_start_tried = true; // it answered: a gap later is it reopening after rest mode
+    else
     {
         if (!s.service_start_tried)
         {
             s.service_start_tried = true;
+            static char line[96];
+            if (status > 0) // ours couldn't get the port anyway
+            {
+                snprintf(line, sizeof line, "Port %d is used by %s, not this app's service",
+                         service_port, name[0] ? name : "another program");
+                say(line);
+                return;
+            }
             const int r = link::start_payload(service_elf);
             say(r == 0    ? "Starting the service..."
                 : r == -1 ? "service.elf is missing from the app"
+                : r == -3 ? "service.elf is damaged or too big"
+                : r == -4 ? "The PC service program won't start"
                           : "No ELF loader on port 9021");
         }
         return;
@@ -202,6 +220,7 @@ void load() noexcept
             s.size = size >= 0 && size < size_count ? size : 1;
             s.speed = speed >= 0 && speed < speed_count ? speed : 1;
             s.sound = sound == 0 ? 0 : 1;
+            clamp_box(); // a position from an old layout or an edited file: back inside
         }
         fclose(f);
     }
@@ -239,7 +258,8 @@ bool update() noexcept
     if (now >= s.next_service_check_ms)
     {
         check_service();
-        s.next_service_check_ms = now + 2000;
+        // From after the check: a slow answer must not shorten the pause.
+        s.next_service_check_ms = screen::now_ms() + 2000;
         redraw = true;
     }
 

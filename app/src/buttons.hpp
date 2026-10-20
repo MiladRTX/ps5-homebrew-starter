@@ -11,7 +11,8 @@
 
 namespace starter::buttons
 {
-// One per file in app/assets/buttons (the same names).
+// One per file in app/assets/buttons (the same names). A new one also needs
+// its row in names[] in buttons.cpp, in the same place.
 enum Icon : int
 {
     cross,
@@ -52,4 +53,11 @@ struct Hint
 
 // A row of hints from x, centred on the line at y (the bottom of a page).
 void hints(screen::Canvas &c, int x, int y, const Hint *list, int count) noexcept;
+
+// The same for an array, counting it for you: hints(c, x, y, what_does_what);
+template <int N>
+void hints(screen::Canvas &c, int x, int y, const Hint (&list)[N]) noexcept
+{
+    hints(c, x, y, list, N);
+}
 } // namespace starter::buttons

@@ -28,10 +28,13 @@ namespace
 {
 constexpr int max_notes = 50;
 constexpr int note_bytes = keyboard::max_length * 4 + 1; // UTF-8: up to 4 bytes a character
-constexpr const char *notes_path = STARTER_DATA "/ps5-starter/notes.txt";
+constexpr const char *notes_path = STARTER_APP_DATA "/notes.txt";
+constexpr const char *notes_temp = STARTER_APP_DATA "/notes.txt.tmp";
+constexpr const char *notes_backup = STARTER_APP_DATA "/notes.txt.bak";
 
 char g_notes[max_notes][note_bytes];
 int g_count = 0;
+bool g_left_out = false; // the file had more than max_notes lines
 
 // ---- Layout ----------------------------------------------------------------
 constexpr int card_x = margin, card_w = 1920 - 2 * margin;
@@ -40,22 +43,55 @@ constexpr int list_y = content_y + 96, list_h = content_h - 96 - 64;
 constexpr int row_h = 76;
 constexpr int rows_in_view = list_h / row_h;
 
-void save() noexcept
+// Writes a new file next to the old one, then swaps it in: a write that fails
+// halfway (full storage, the app closed mid-write) never costs the notes.
+bool save() noexcept
 {
-    mkdir(STARTER_DATA "/ps5-starter", 0777);
-    FILE *f = fopen(notes_path, "w");
+    mkdir(STARTER_APP_DATA, 0777);
+    FILE *f = fopen(notes_temp, "w");
     if (!f)
-        return;
+        return false;
+    bool ok = true;
     for (int i = 0; i < g_count; ++i)
-        fprintf(f, "%s\n", g_notes[i]);
-    fclose(f);
+        ok = ok && fprintf(f, "%s\n", g_notes[i]) >= 0;
+    ok = fclose(f) == 0 && ok;
+    if (!ok)
+    {
+        remove(notes_temp);
+        return false;
+    }
+    // Lines past the 50th weren't loaded: keep the full file as notes.txt.bak
+    // before the first save replaces it.
+    if (g_left_out)
+    {
+        rename(notes_path, notes_backup);
+        g_left_out = false;
+    }
+    return rename(notes_temp, notes_path) == 0;
 }
 
-// Copies text into a note, as one line.
+// After a change: saved, or the user hears and reads that it wasn't.
+void saved_or_say(bool ok) noexcept
+{
+    sound::play(ok ? sound::Effect::select : sound::Effect::error);
+    if (!ok)
+        say("Couldn't save the notes");
+}
+
+// Copies text into a note, as one line. Text that doesn't fit is cut between
+// characters, never in the middle of one (UTF-8 uses up to 4 bytes for one).
 void set_note(int index, const char *text) noexcept
 {
-    snprintf(g_notes[index], sizeof g_notes[index], "%s", text);
-    for (char *p = g_notes[index]; *p; ++p)
+    char *note = g_notes[index];
+    snprintf(note, note_bytes, "%s", text);
+    std::size_t n = strlen(note);
+    if (text[n] != '\0') // cut: back up to the start of a character
+    {
+        while (n > 0 && (static_cast<unsigned char>(text[n]) & 0xc0) == 0x80)
+            --n;
+        note[n] = '\0';
+    }
+    for (char *p = note; *p; ++p)
         if (*p == '\n' || *p == '\r')
             *p = ' ';
 }
@@ -65,6 +101,35 @@ void delete_note(int index) noexcept
     for (int i = index; i + 1 < g_count; ++i)
         memcpy(g_notes[i], g_notes[i + 1], sizeof g_notes[i]);
     --g_count;
+}
+
+// A note as it fits in `room` pixels: whole, or cut between characters with
+// "…" at the end. buf holds the cut version.
+const char *fit(const char *note, int room, char *buf) noexcept
+{
+    constexpr const char *dots = "\xE2\x80\xA6"; // …
+    if (screen::Canvas::text_width(note, Face::medium, 22) <= static_cast<float>(room))
+        return note;
+    // The longest start that fits, found by halving: lo always fits, hi doesn't.
+    const int len = static_cast<int>(strlen(note));
+    int lo = 0, hi = len;
+    while (hi - lo > 1)
+    {
+        int mid = (lo + hi) / 2;
+        while (mid > lo && (static_cast<unsigned char>(note[mid]) & 0xc0) == 0x80)
+            --mid; // to the start of a character
+        if (mid == lo)
+            break;
+        memcpy(buf, note, static_cast<std::size_t>(mid));
+        strcpy(buf + mid, dots);
+        if (screen::Canvas::text_width(buf, Face::medium, 22) <= static_cast<float>(room))
+            lo = mid;
+        else
+            hi = mid;
+    }
+    memcpy(buf, note, static_cast<std::size_t>(lo));
+    strcpy(buf + lo, dots);
+    return buf;
 }
 
 // Keeps the chosen row in view: moves the first row only as far as needed.
@@ -113,9 +178,8 @@ bool finish_typing(State &s) noexcept
         say("The list is full: delete a note first");
         return true;
     }
-    save();
     keep_in_view(s);
-    sound::play(sound::Effect::select);
+    saved_or_say(save());
     return true;
 }
 } // namespace
@@ -123,15 +187,28 @@ bool finish_typing(State &s) noexcept
 void notes_load() noexcept
 {
     g_count = 0;
+    g_left_out = false;
     FILE *f = fopen(notes_path, "r");
     if (!f)
         return;
     char line[note_bytes + 2];
-    while (g_count < max_notes && fgets(line, sizeof line, f))
+    while (fgets(line, sizeof line, f))
     {
+        // A line longer than a note (the file edited by hand): one note all
+        // the same, the rest of the line skipped.
+        if (!strchr(line, '\n') && !feof(f))
+            for (int ch = fgetc(f); ch != EOF && ch != '\n'; ch = fgetc(f))
+            {
+            }
         line[strcspn(line, "\r\n")] = '\0';
-        if (line[0])
-            set_note(g_count++, line);
+        if (!line[0])
+            continue;
+        if (g_count == max_notes)
+        {
+            g_left_out = true; // more lines than notes: see save()
+            break;
+        }
+        set_note(g_count++, line);
     }
     fclose(f);
 }
@@ -178,6 +255,8 @@ bool notes_update(unsigned pressed) noexcept
             sound::play(sound::Effect::move);
         }
 
+        // One of new, edit and delete per frame: two buttons pressed together
+        // must not, say, delete the note the keyboard was just opened for.
         if (pressed & pad::triangle)
         {
             if (g_count >= max_notes)
@@ -193,7 +272,7 @@ bool notes_update(unsigned pressed) noexcept
             else
                 say("The keyboard couldn't open");
         }
-        if ((pressed & pad::cross) && g_count > 0)
+        else if ((pressed & pad::cross) && g_count > 0)
         {
             if (keyboard::open("Edit note", "", g_notes[s.notes_selected], keyboard::max_length))
             {
@@ -203,17 +282,21 @@ bool notes_update(unsigned pressed) noexcept
             else
                 say("The keyboard couldn't open");
         }
-        if ((pressed & pad::square) && g_count > 0)
+        else if ((pressed & pad::square) && g_count > 0)
         {
             if (s.delete_armed == s.notes_selected)
             {
                 delete_note(s.notes_selected);
-                save();
                 s.delete_armed = -1;
                 if (s.notes_selected >= g_count && s.notes_selected > 0)
                     --s.notes_selected;
-                sound::play(sound::Effect::back);
-                say("Note deleted");
+                if (save())
+                {
+                    sound::play(sound::Effect::back);
+                    say("Note deleted");
+                }
+                else
+                    saved_or_say(false);
             }
             else
             {
@@ -260,7 +343,7 @@ void notes_draw(screen::Canvas &c) noexcept
     {
         // Rows are drawn where the scroll puts them; the clip cuts off the
         // ones partly outside the list.
-        c.clip(list_x, list_y, list_w + 24, list_h);
+        c.clip(list_x, list_y, list_w, list_h);
         const int first = static_cast<int>(s.notes_scroll) / row_h;
         for (int i = first; i < g_count && i <= first + rows_in_view + 1; ++i)
         {
@@ -274,8 +357,9 @@ void notes_draw(screen::Canvas &c) noexcept
             char number[8];
             snprintf(number, sizeof number, "%2d", i + 1);
             c.text(static_cast<float>(list_x + 20), y + 47, number, Face::mono_medium, 18, Color::faint);
-            c.text(static_cast<float>(list_x + 76), y + 47, g_notes[i], Face::medium, 22,
-                   chosen ? Color::text : Color::muted);
+            char shown[note_bytes + 4];
+            c.text(static_cast<float>(list_x + 76), y + 47, fit(g_notes[i], list_w - 96, shown), Face::medium,
+                   22, chosen ? Color::text : Color::muted);
         }
         c.unclip();
 
@@ -287,7 +371,11 @@ void notes_draw(screen::Canvas &c) noexcept
             const float shown = static_cast<float>(rows_in_view) / static_cast<float>(g_count);
             const int thumb_h = static_cast<int>(static_cast<float>(track_h) * shown);
             const float most = static_cast<float>((g_count - rows_in_view) * row_h);
-            const int thumb_y = list_y + static_cast<int>((track_h - thumb_h) * (s.notes_scroll / most));
+            // 0 at the top, 1 at the bottom. (Right after a delete the scroll
+            // is still easing back, briefly past the new bottom.)
+            float at = s.notes_scroll / most;
+            at = at < 0 ? 0 : at > 1 ? 1 : at;
+            const int thumb_y = list_y + static_cast<int>((track_h - thumb_h) * at);
             c.round_rect(track_x, thumb_y, 6, thumb_h, 3, Color::muted);
         }
     }
@@ -297,6 +385,6 @@ void notes_draw(screen::Canvas &c) noexcept
         {dpad_up, dpad_down, "choose"}, {l2, r2, "page"},      {triangle, none, "new"},
         {cross, none, "edit"},          {square, none, "delete"},
     };
-    hints(c, card_x + 32, content_y + content_h - 38, what_does_what, 5);
+    hints(c, card_x + 32, content_y + content_h - 38, what_does_what);
 }
 } // namespace starter::hello

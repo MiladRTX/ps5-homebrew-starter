@@ -9,7 +9,9 @@ typedef struct notify_request {
     char message[3075];
 } notify_request_t;
 
-/* A notification: printed, one line. */
+/* A notification: printed, one line. The simulator starts the service with its
+ * output going nowhere (link.cpp), so look for these in service.log instead:
+ * service.c's notify() writes each one there as a "notify:" line. */
 int sceKernelSendNotificationRequest(int device, notify_request_t *request, size_t size,
                                      int blocking) {
     (void)device;

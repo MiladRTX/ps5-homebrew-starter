@@ -34,16 +34,21 @@ app/build.sh
 
 The app is built with **ps5-native-app-boilerplate** by BlackBearReloaded,
 the kit that turns C++ into a PS5 app. It's included in this starter, in
-[`kit/`](../kit). The first build takes a few minutes, because the kit
-downloads its own copy of the SDK; later builds take seconds.
+[`kit/`](../kit). The first build takes a few minutes, because the kit builds
+its tools and zlib first; later builds take seconds.
 
 ```
 ==> [app] Compiling, linking, signing, and assembling the app folder
+...
 Build complete.
+App folder: /home/you/.ps5-starter/kit-work/dist/PPSA99901
+Folder ZIP: /home/you/.ps5-starter/kit-work/dist/PPSA99901.zip
 
 App folder: build/app/PPSA99901
 ZIP:        build/app/PPSA99901.zip
 ```
+
+The first two paths are the kit's own work copy; use the last two, in `build/app/`.
 
 What `app/build.sh` did, in order:
 
@@ -59,9 +64,10 @@ folder and not in this one.
 
 ## Put it on the console
 
-Copy the whole `PPSA99901` folder into `/data/homebrew/` on the console with
-your FTP client (in WinSCP or FileZilla, drag the folder across), so you end up
-with `/data/homebrew/PPSA99901/eboot.bin` and the rest.
+Copy the whole `build/app/PPSA99901` folder into `/data/homebrew/` on the
+console with your FTP client (in WinSCP or FileZilla, drag the folder across;
+`explorer.exe build/app` opens it on the Windows side), so you end up with
+`/data/homebrew/PPSA99901/eboot.bin` and the rest.
 
 Or let the build do it over FTP:
 
@@ -88,7 +94,8 @@ icon. Open it.
 
 The panel on the right shows the last button you pressed, and the
 **background service**: the app starts `service.elf` the first time you open
-it, and shows its uptime and the CPU temperature (chapter 9).
+it, and shows whether it's running and for how long. The About page has the
+rest, the CPU temperature included (chapter 9).
 
 Close the app (PS button, then close it on the card) and open it again: the box
 is where you left it, because the app saved its position (chapter 6).

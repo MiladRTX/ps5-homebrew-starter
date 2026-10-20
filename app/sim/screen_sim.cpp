@@ -11,6 +11,7 @@
  * it; touch:<x>,<y> touches the touchpad (0 to 1); wait:<ms> waits;
  * type:<text> types into the open keyboard (_ for a space), enter and cancel
  * close it; shot:<file.ppm> saves the screen; quit closes the simulator.
+ * Steps are separated by spaces or new lines.
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
@@ -20,6 +21,7 @@
 
 #include <SDL.h>
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,7 +47,7 @@ std::uint64_t g_note_until = 0;
 void open_window() noexcept
 {
     if (SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
-        fail("no display (see docs/10-pc-preview.md)");
+        fail("no display (see docs/13-troubleshooting.md)");
     g_window = SDL_CreateWindow("Hello PS5 - PC simulator", SDL_WINDOWPOS_CENTERED,
                                 SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_RESIZABLE);
     if (!g_window)
@@ -118,8 +120,9 @@ void start_script() noexcept
 
 // Runs the script: each step holds its input for a while, then lets go for a
 // moment, so the app sees separate presses. A "shot" is saved once the frame
-// after the previous step has been drawn. Returns a shot's path when one is due.
-const char *script_step(std::uint64_t now, bool &quit) noexcept
+// after the previous step has been drawn. Returns a shot's path when one is due;
+// redraw is set when a step changed the screen without a button (typing).
+const char *script_step(std::uint64_t now, bool &quit, bool &redraw) noexcept
 {
     static char shot[512];
     static bool releasing = false;
@@ -136,7 +139,7 @@ const char *script_step(std::uint64_t now, bool &quit) noexcept
 
     // The next word.
     char *word = g_script.next;
-    while (*word == ' ')
+    while (*word && isspace(static_cast<unsigned char>(*word))) // spaces or new lines
         ++word;
     if (!*word)
     {
@@ -144,7 +147,7 @@ const char *script_step(std::uint64_t now, bool &quit) noexcept
         return nullptr;
     }
     char *end = word;
-    while (*end && *end != ' ')
+    while (*end && !isspace(static_cast<unsigned char>(*end)))
         ++end;
     g_script.next = *end ? end + 1 : end;
     *end = '\0';
@@ -160,6 +163,7 @@ const char *script_step(std::uint64_t now, bool &quit) noexcept
             keyboard_type(word + 5);
         else
             keyboard_finish(word[0] == 'e');
+        redraw = true;
         g_script.until = now + 60;
     }
     else if (sscanf(word, "wait:%d", &ms) == 1)
@@ -234,14 +238,18 @@ void notify(std::string_view message) noexcept
                 continue;
             }
             if (event.type == SDL_QUIT ||
-                (event.type == SDL_KEYDOWN && event.key.keysym.scancode == SDL_SCANCODE_ESCAPE))
+                (event.type == SDL_KEYDOWN && !event.key.repeat && // a fresh press, not a held one
+                 event.key.keysym.scancode == SDL_SCANCODE_ESCAPE))
                 quit = true;
             if (event.type == SDL_WINDOWEVENT)
                 dirty = true; // resized or uncovered: show the frame again
             sim::pad_event(event);
         }
-        if (const char *shot = sim::script_step(frame_start, quit))
+        bool script_redraw = false;
+        if (const char *shot = sim::script_step(frame_start, quit, script_redraw))
             pending_shot = shot;
+        if (script_redraw)
+            dirty = true;
         if (quit && !pending_shot)
         {
             SDL_Quit();

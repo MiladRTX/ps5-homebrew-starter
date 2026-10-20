@@ -21,7 +21,7 @@ const struct
 {
     const char *file;  // in app/assets/buttons, without .png
     const char *label; // drawn when the picture is missing
-} names[icon_count] = {
+} names[] = {
     {"cross", "Cross"},     {"circle", "Circle"},    {"square", "Square"},
     {"triangle", "Triangle"}, {"dpad", "D-pad"},     {"dpad_up", "Up"},
     {"dpad_down", "Down"},  {"dpad_left", "Left"},   {"dpad_right", "Right"},
@@ -29,6 +29,8 @@ const struct
     {"r2", "R2"},           {"l_stick", "Stick"},    {"options", "OPTIONS"},
     {"touchpad", "Touchpad"},
 };
+static_assert(sizeof names / sizeof names[0] == icon_count,
+              "buttons.cpp: one names[] row per Icon in buttons.hpp, in the same order");
 
 image::Image g_icons[icon_count];
 

@@ -9,6 +9,7 @@
 #include "pad.hpp"
 #include "pages.hpp"
 #include "screen.hpp"
+#include "service_version.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -32,12 +33,19 @@ Touch touch() noexcept
 
 namespace
 {
+bool g_failed = false;
+
 void shot(const char *dir, const char *name) noexcept
 {
     char path[512];
     snprintf(path, sizeof path, "%s/%s.ppm", dir, name);
-    starter::screen::preview(starter::hello::draw, path);
-    printf("wrote %s\n", path);
+    if (starter::screen::preview(starter::hello::draw, path))
+        printf("wrote %s\n", path);
+    else
+    {
+        fprintf(stderr, "preview: can't write %s\n", path);
+        g_failed = true;
+    }
 }
 } // namespace
 
@@ -49,7 +57,10 @@ int main(int argc, char **argv)
         return 2;
     }
     if (!starter::font::load(argv[1]))
+    {
+        fprintf(stderr, "preview: the fonts are missing in %s\n", argv[1]);
         return 1;
+    }
     using starter::hello::Page;
     starter::hello::State &s = starter::hello::state();
     starter::hello::load(); // the defaults: there's no saved file on a PC
@@ -65,7 +76,7 @@ int main(int argc, char **argv)
     s.service_up = true;
     s.service_uptime_s = 42;
     s.service_cpu_c = 51;
-    strcpy(s.service_version, "1.0");
+    strcpy(s.service_version, SERVICE_VERSION);
     strcpy(s.address, "192.168.0.10");
     strcpy(s.message, "Notification sent");
     s.message_until_ms = ~0ULL;
@@ -78,7 +89,7 @@ int main(int argc, char **argv)
         "Buy milk",          "Finish the menu code", "Try the touchpad on the Play page",
         "Call Sam back",     "Ideas: a timer page",  "Check the service after rest mode",
         "Pick a better icon", "Read chapter 8 again", "Sound: lower the clicks?",
-        "Push to GitHub",    "Write a second page",  "Backup /data/ps5-starter",
+        "Push to GitHub",    "Write a second page",  "Back up the notes",
     };
     for (const char *note : notes)
         (void)starter::hello::notes_add(note);
@@ -98,7 +109,8 @@ int main(int argc, char **argv)
     // About, with an older service running than the app carries.
     s.page = Page::about;
     strcpy(s.service_version, "0.9");
-    strcpy(s.message, "Updating the service from 0.9 to 1.0...");
+    snprintf(s.message, sizeof s.message, "Updating the service from %s to %s...", s.service_version,
+             SERVICE_VERSION); // what the app would say (hello.cpp)
     shot(argv[2], "5_about_updating");
-    return 0;
+    return g_failed ? 1 : 0;
 }

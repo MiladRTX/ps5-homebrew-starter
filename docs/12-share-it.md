@@ -13,7 +13,8 @@ code on GitHub covers it.
 
 1. Put your project on GitHub: everything except `build/` (`.gitignore`
    already leaves it out).
-2. Raise `contentVersion` in `app/sce_sys/param.json` and commit it.
+2. Raise `contentVersion` in `app/sce_sys/param.json`, commit it, and push it
+   (`git push`): the release is made from what's on GitHub.
 3. Build from that commit: `app/build.sh`.
 4. Create a release with a tag like `v1.0`, and attach:
    - `build/app/<TITLE ID>.zip`: the app. Keep the file name, and the folder
@@ -32,17 +33,18 @@ downloaded 1.0 should have the same 1.0. Fixed something? Make a new release.
 
 ## Installing it
 
-People install your app the way you did in chapter 5: unzip it, copy the
-folder to `/data/homebrew/` on the console, and wait a few seconds for it to
-appear on the home screen. Put those steps in your README and in your release
-notes.
+People install your app much like you did in chapter 5: unzip the ZIP, copy
+the `<TITLE ID>` folder inside it to `/data/homebrew/` on the console (so
+`eboot.bin` ends up at `/data/homebrew/<TITLE ID>/eboot.bin`, not one folder
+deeper), and wait about 15 seconds for it to appear on the home screen. Put
+those steps in your README and in your release notes.
 
 ## Updating
 
 Every update is the same:
 
 1. Raise `contentVersion` in `app/sce_sys/param.json` (chapter 11).
-2. Build, and make a new release with a new tag.
+2. Commit and push, build, and make a new release with a new tag.
 
 Users copy the new folder over the old one, after closing the app. If your app
 carries a payload, have it replace the old one that's still running (chapter 9).

@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
 #ifndef STARTER_PREVIEW
@@ -59,6 +60,12 @@ int clip_x0 = 0, clip_y0 = 0, clip_x1 = width, clip_y1 = height;
 inline float clamp01(float v) noexcept
 {
     return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+
+// Opacity into 0..255: a fade that overshoots to -3 is invisible, not solid.
+inline int clamp_alpha(int a) noexcept
+{
+    return a < 0 ? 0 : a > 255 ? 255 : a;
 }
 
 // d = c over d with opacity a (0..255), in the frame's sRGB values, as a browser blends.
@@ -130,6 +137,12 @@ struct Box
     int x0 = width, y0 = height, x1 = 0, y1 = 0;
     void add(float x, float y, float pad) noexcept
     {
+        // Far off the screen counts as just off it (and NaN is skipped), so
+        // the conversions to int below always fit.
+        if (!(x == x) || !(y == y))
+            return;
+        x = x < -2 * pad - 1 ? -2 * pad - 1 : x > width + 2 * pad + 1 ? width + 2 * pad + 1 : x;
+        y = y < -2 * pad - 1 ? -2 * pad - 1 : y > height + 2 * pad + 1 ? height + 2 * pad + 1 : y;
         const int a = static_cast<int>(std::floor(x - pad)), b = static_cast<int>(std::floor(y - pad));
         const int c = static_cast<int>(std::ceil(x + pad)), d = static_cast<int>(std::ceil(y + pad));
         x0 = a < x0 ? a : x0;
@@ -286,12 +299,15 @@ void Canvas::clear(Color c) noexcept
 
 void Canvas::rect(int x, int y, int w, int h, Color c, int alpha) noexcept
 {
-    for (int row = y; row < y + h; ++row)
+    alpha = clamp_alpha(alpha);
+    const int top = y > clip_y0 ? y : clip_y0, bottom = y + h < clip_y1 ? y + h : clip_y1;
+    for (int row = top; row < bottom; ++row)
         span(x, x + w, row, static_cast<std::uint32_t>(c), static_cast<unsigned>(alpha));
 }
 
 void Canvas::round_rect(int x, int y, int w, int h, int r, Color c, int alpha) noexcept
 {
+    alpha = clamp_alpha(alpha);
     const auto col = static_cast<std::uint32_t>(c);
     if (r * 2 > w)
         r = w / 2;
@@ -319,6 +335,13 @@ void Canvas::round_rect(int x, int y, int w, int h, int r, Color c, int alpha) n
 
 void Canvas::round_frame(int x, int y, int w, int h, int r, int thick, Color c, int alpha) noexcept
 {
+    alpha = clamp_alpha(alpha);
+    // The same corners as round_rect() with the same arguments, a "pill"
+    // radius like 999 included.
+    if (r * 2 > w)
+        r = w / 2;
+    if (r * 2 > h)
+        r = h / 2;
     const auto col = static_cast<std::uint32_t>(c);
     const float fx = static_cast<float>(x), fy = static_cast<float>(y);
     const float fw = static_cast<float>(w), fh = static_cast<float>(h);
@@ -347,6 +370,7 @@ void Canvas::round_frame(int x, int y, int w, int h, int r, int thick, Color c, 
 
 void Canvas::circle(float cx, float cy, float r, Color c, int alpha) noexcept
 {
+    alpha = clamp_alpha(alpha);
     const auto col = static_cast<std::uint32_t>(c);
     Box b;
     b.add(cx, cy, r + 1);
@@ -363,6 +387,7 @@ void Canvas::circle(float cx, float cy, float r, Color c, int alpha) noexcept
 
 void Canvas::ring(float cx, float cy, float r, float thick, Color c, int alpha) noexcept
 {
+    alpha = clamp_alpha(alpha);
     const auto col = static_cast<std::uint32_t>(c);
     Box b;
     b.add(cx, cy, r + thick / 2 + 1);
@@ -382,6 +407,8 @@ void Canvas::polyline(const float *xy, int n, float thick, Color c, int alpha, f
 {
     if (n < 1)
         return;
+    alpha = clamp_alpha(alpha);
+    gap = gap < 0 ? 0 : gap; // a negative gap would never finish the walk below
     const float half = thick / 2;
     Box b;
     for (int i = 0; i < n; ++i)
@@ -430,13 +457,14 @@ void Canvas::polyline(const float *xy, int n, float thick, Color c, int alpha, f
         }
     }
 
+    // Onto the frame through put(), which keeps it inside clip().
     const auto col = static_cast<std::uint32_t>(c);
     for (int y = b.y0; y < b.y1; ++y)
         for (int x = b.x0; x < b.x1; ++x)
         {
             const unsigned m = mask[y * width + x];
             if (m)
-                blend(frame[y * width + x], col, (m * static_cast<unsigned>(alpha) + 127) / 255);
+                put(x, y, col, (m * static_cast<unsigned>(alpha) + 127) / 255);
         }
 }
 
@@ -444,19 +472,30 @@ void Canvas::fill_under(const float *xy, int n, int floor_y, Color c, int alpha_
 {
     if (n < 2)
         return;
+    alpha_top = clamp_alpha(alpha_top);
+    // Points that aren't numbers (a graph of all-equal values divides 0 by
+    // 0) are skipped; the loops stay inside the clip box however far off the
+    // points are.
+    const auto finite = [](float v) { return std::isfinite(v); };
     float top = static_cast<float>(floor_y);
     for (int i = 0; i < n; ++i)
-        top = xy[2 * i + 1] < top ? xy[2 * i + 1] : top;
+        if (finite(xy[2 * i + 1]))
+            top = xy[2 * i + 1] < top ? xy[2 * i + 1] : top;
     const float span_h = floor_y - top > 1 ? floor_y - top : 1;
     const auto col = static_cast<std::uint32_t>(c);
+    const int y_end = floor_y < clip_y1 ? floor_y : clip_y1;
     for (int i = 0; i + 1 < n; ++i)
     {
         const float x0 = xy[2 * i], y0 = xy[2 * i + 1], x1 = xy[2 * i + 2], y1 = xy[2 * i + 3];
-        for (int x = static_cast<int>(std::ceil(x0 - 0.5f)); x + 0.5f < x1 + (i + 2 == n ? 0.5f : 0); ++x)
+        if (!finite(x0) || !finite(y0) || !finite(x1) || !finite(y1))
+            continue;
+        const float xa = std::fmax(std::ceil(x0 - 0.5f), static_cast<float>(clip_x0));
+        const float xb = std::fmin(x1 + (i + 2 == n ? 0.5f : 0) - 0.5f, static_cast<float>(clip_x1));
+        for (int x = static_cast<int>(xa); static_cast<float>(x) < xb; ++x)
         {
             const float t = x1 > x0 ? (x + 0.5f - x0) / (x1 - x0) : 0;
             const float yc = y0 + (y1 - y0) * clamp01(t);
-            for (int y = static_cast<int>(std::floor(yc)); y < floor_y; ++y)
+            for (int y = static_cast<int>(std::fmax(std::floor(yc), static_cast<float>(clip_y0))); y < y_end; ++y)
             {
                 const float cover = y + 1 > yc ? clamp01(y + 1 - yc) : 1.0f; // soft top edge
                 const float fade = 1.0f - (y + 0.5f - top) / span_h;
@@ -469,6 +508,11 @@ void Canvas::fill_under(const float *xy, int n, int floor_y, Color c, int alpha_
 void Canvas::dashed_h(int x0, int x1, int y, int thick, int dash, int gap, Color c,
                       int alpha) noexcept
 {
+    if (dash <= 0 || gap < 0) // no dashes to make: a plain line
+    {
+        rect(x0, y, x1 - x0, thick, c, alpha);
+        return;
+    }
     for (int x = x0; x < x1; x += dash + gap)
         rect(x, y, x + dash < x1 ? dash : x1 - x, thick, c, alpha);
 }
@@ -476,68 +520,92 @@ void Canvas::dashed_h(int x0, int x1, int y, int thick, int dash, int gap, Color
 void Canvas::dashed_v(int x, int y0, int y1, int thick, int dash, int gap, Color c,
                       int alpha) noexcept
 {
+    if (dash <= 0 || gap < 0)
+    {
+        rect(x, y0, thick, y1 - y0, c, alpha);
+        return;
+    }
     for (int y = y0; y < y1; y += dash + gap)
         rect(x, y, thick, y + dash < y1 ? dash : y1 - y, c, alpha);
 }
 
 void Canvas::image(int x, int y, int w, int h, const image::Image &picture, int alpha) noexcept
 {
+    alpha = alpha > 255 ? 255 : alpha;
     if (!picture.loaded() || w <= 0 || h <= 0 || alpha <= 0)
         return;
     const float sx = static_cast<float>(picture.w) / static_cast<float>(w);
     const float sy = static_cast<float>(picture.h) / static_cast<float>(h);
-    const bool shrink = sx >= 1 && sy >= 1;
-    // Colours are summed weighted by their alpha ("premultiplied"), so a
-    // transparent pixel's colour doesn't bleed into its neighbours.
-    auto add = [&](int px, int py, float weight, float sum[4]) {
-        const std::uint32_t p = picture.pixels[py * picture.w + px];
-        const float a = static_cast<float>(p >> 24) * weight;
-        sum[0] += static_cast<float>(p & 255) * a;
-        sum[1] += static_cast<float>((p >> 8) & 255) * a;
-        sum[2] += static_cast<float>((p >> 16) & 255) * a;
-        sum[3] += a;
+    // Which source pixels make screen pixel i along one side, and how much
+    // each counts: shrunk, every pixel it covers, all the same; enlarged, the
+    // two nearest, blended by distance. Each side picks for itself, so a
+    // picture squeezed on one side only is still averaged on that side.
+    struct Taps
+    {
+        int at[64];
+        float weight[64];
+        int n = 0;
+        float total = 0;
     };
+    const auto taps = [](int i, float s, int size, Taps &t) {
+        t.n = 0;
+        t.total = 0;
+        if (s >= 1)
+        {
+            int p0 = static_cast<int>(static_cast<float>(i) * s);
+            int p1 = static_cast<int>(static_cast<float>(i + 1) * s);
+            p0 = p0 >= size ? size - 1 : p0;
+            p1 = p1 <= p0 ? p0 + 1 : p1 > size ? size : p1;
+            p1 = p1 - p0 > 64 ? p0 + 64 : p1; // more than 64 to 1: a sample of them
+            for (int p = p0; p < p1; ++p)
+            {
+                t.at[t.n] = p;
+                t.weight[t.n++] = 1;
+            }
+            t.total = static_cast<float>(t.n);
+            return;
+        }
+        float u = (static_cast<float>(i) + 0.5f) * s - 0.5f;
+        u = u < 0 ? 0 : u;
+        const int p = static_cast<int>(u);
+        const float f = u - static_cast<float>(p);
+        t.at[0] = p;
+        t.weight[0] = 1 - f;
+        t.at[1] = p + 1 < size ? p + 1 : p;
+        t.weight[1] = f;
+        t.n = 2;
+        t.total = 1;
+    };
+    Taps across, down;
     for (int j = 0; j < h; ++j)
     {
         const int dy = y + j;
         if (dy < clip_y0 || dy >= clip_y1)
             continue;
+        taps(j, sy, picture.h, down);
         for (int i = 0; i < w; ++i)
         {
             const int dx = x + i;
             if (dx < clip_x0 || dx >= clip_x1)
                 continue;
-            float sum[4] = {0, 0, 0, 0}, total = 0;
-            if (shrink)
+            taps(i, sx, picture.w, across);
+            // Colours are summed weighted by their alpha ("premultiplied"), so
+            // a transparent pixel's colour doesn't bleed into its neighbours.
+            float sum[4] = {0, 0, 0, 0};
+            for (int b = 0; b < down.n; ++b)
             {
-                // Every source pixel this screen pixel covers, averaged.
-                const int x0 = static_cast<int>(static_cast<float>(i) * sx);
-                const int y0 = static_cast<int>(static_cast<float>(j) * sy);
-                int x1 = static_cast<int>(static_cast<float>(i + 1) * sx);
-                int y1 = static_cast<int>(static_cast<float>(j + 1) * sy);
-                x1 = x1 <= x0 ? x0 + 1 : x1 > picture.w ? picture.w : x1;
-                y1 = y1 <= y0 ? y0 + 1 : y1 > picture.h ? picture.h : y1;
-                for (int py = y0; py < y1; ++py)
-                    for (int px = x0; px < x1; ++px)
-                        add(px, py, 1, sum);
-                total = static_cast<float>((x1 - x0) * (y1 - y0));
+                const std::uint32_t *row = picture.pixels + down.at[b] * picture.w;
+                for (int a = 0; a < across.n; ++a)
+                {
+                    const std::uint32_t p = row[across.at[a]];
+                    const float weight = static_cast<float>(p >> 24) * across.weight[a] * down.weight[b];
+                    sum[0] += static_cast<float>(p & 255) * weight;
+                    sum[1] += static_cast<float>((p >> 8) & 255) * weight;
+                    sum[2] += static_cast<float>((p >> 16) & 255) * weight;
+                    sum[3] += weight;
+                }
             }
-            else
-            {
-                // Between the four nearest source pixels.
-                float u = (static_cast<float>(i) + 0.5f) * sx - 0.5f;
-                float v = (static_cast<float>(j) + 0.5f) * sy - 0.5f;
-                u = u < 0 ? 0 : u;
-                v = v < 0 ? 0 : v;
-                const int px = static_cast<int>(u), py = static_cast<int>(v);
-                const int px1 = px + 1 < picture.w ? px + 1 : px, py1 = py + 1 < picture.h ? py + 1 : py;
-                const float fu = u - static_cast<float>(px), fv = v - static_cast<float>(py);
-                add(px, py, (1 - fu) * (1 - fv), sum);
-                add(px1, py, fu * (1 - fv), sum);
-                add(px, py1, (1 - fu) * fv, sum);
-                add(px1, py1, fu * fv, sum);
-                total = 1;
-            }
+            const float total = across.total * down.total;
             if (sum[3] <= 0)
                 continue; // fully transparent here
             const auto channel = [&](int k) {
@@ -553,6 +621,7 @@ void Canvas::image(int x, int y, int w, int h, const image::Image &picture, int 
 
 void Canvas::icon(int x, int y, int w, int h, const std::uint8_t *cover, Color c, int alpha) noexcept
 {
+    alpha = clamp_alpha(alpha);
     const auto col = static_cast<std::uint32_t>(c);
     for (int j = 0; j < h; ++j)
         for (int i = 0; i < w; ++i)
@@ -563,6 +632,7 @@ void Canvas::icon(int x, int y, int w, int h, const std::uint8_t *cover, Color c
 float Canvas::text(float x, float y, std::string_view s, font::Face face, int px, Color c,
                    int alpha, float tracking) noexcept
 {
+    alpha = clamp_alpha(alpha);
     const auto col = static_cast<std::uint32_t>(c);
     const float start = x;
     std::uint32_t prev = 0;
@@ -570,11 +640,11 @@ float Canvas::text(float x, float y, std::string_view s, font::Face face, int px
     for (int at = 0; at < len;)
     {
         const std::uint32_t cp = font::next(s.data(), len, at);
-        if (prev)
-            x += font::kern(face, px, prev, cp);
         const font::Glyph *g = font::glyph(face, px, cp);
         if (!g)
             break;
+        if (prev) // between two letters: kerning, and the tracking
+            x += font::kern(face, px, prev, cp) + tracking * px;
         if (g->bits)
         {
             const int gx = static_cast<int>(std::floor(x + 0.5f)) + g->xoff;
@@ -590,30 +660,30 @@ float Canvas::text(float x, float y, std::string_view s, font::Face face, int px
                         put(gx + col_x, py, col, (src[col_x] * static_cast<unsigned>(alpha) + 127) / 255);
             }
         }
-        x += g->advance + tracking * px;
+        x += g->advance;
         prev = cp;
     }
     return x - start;
 }
 
+// Measures exactly as text() draws.
 float Canvas::text_width(std::string_view s, font::Face face, int px, float tracking) noexcept
 {
     float w = 0;
     std::uint32_t prev = 0;
     const int len = static_cast<int>(s.size());
-    int count = 0;
-    for (int at = 0; at < len; ++count)
+    for (int at = 0; at < len;)
     {
         const std::uint32_t cp = font::next(s.data(), len, at);
-        if (prev)
-            w += font::kern(face, px, prev, cp);
         const font::Glyph *g = font::glyph(face, px, cp);
         if (!g)
             break;
+        if (prev)
+            w += font::kern(face, px, prev, cp) + tracking * px;
         w += g->advance;
         prev = cp;
     }
-    return w + (count > 1 ? (count - 1) * tracking * px : 0);
+    return w;
 }
 
 #ifdef STARTER_PREVIEW
@@ -637,11 +707,11 @@ bool write_ppm(const char *path) noexcept
     return fclose(f) == 0;
 }
 
-void preview(Draw draw, const char *ppm_path) noexcept
+bool preview(Draw draw, const char *ppm_path) noexcept
 {
     Canvas canvas;
     draw(canvas);
-    (void)write_ppm(ppm_path);
+    return write_ppm(ppm_path);
 }
 
 #ifndef STARTER_SIM // the simulator's run() and notify() are in app/sim/screen_sim.cpp
@@ -650,16 +720,17 @@ void notify(std::string_view message) noexcept
     printf("notify: %.*s\n", static_cast<int>(message.size()), message.data());
 }
 
+// The preview takes pictures: it has no frame loop to run.
 [[noreturn]] void run(Update, Draw) noexcept
 {
-    for (;;)
-    {
-    }
+    fputs("screen::run() isn't in the PC preview: app/sim runs the app live\n", stderr);
+    abort();
 }
 #endif
 #else
-void preview(Draw, const char *) noexcept
+bool preview(Draw, const char *) noexcept
 {
+    return false; // pictures are for the PC builds
 }
 
 void notify(std::string_view message) noexcept

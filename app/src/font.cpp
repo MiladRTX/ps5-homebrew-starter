@@ -104,37 +104,47 @@ bool load(const char *dir) noexcept
 
 const Glyph *glyph(Face face, int px, std::uint32_t cp) noexcept
 {
-    if (face < 0 || face >= face_count || !g_faces[face].ok || px <= 0 || px > 512)
+    if (face < 0 || face >= face_count || !g_faces[face].ok || px <= 0 || px > max_px)
         return nullptr;
     unsigned h = (cp * 2654435761U) ^ (static_cast<unsigned>(px) * 40503U) ^
                  (static_cast<unsigned>(face) * 0x9e3779b9U);
-    for (unsigned probe = 0; probe < table_size; ++probe)
+    for (int pass = 0; pass < 2; ++pass)
     {
-        Entry &e = g_table[(h + probe) & (table_size - 1)];
-        if (e.used && e.cp == cp && e.px == px && e.face == face)
-            return &e.g;
-        if (e.used)
-            continue;
-
-        const stbtt_fontinfo &info = g_faces[face].info;
-        const float s = scale(face, px);
-        int adv = 0, lsb = 0;
-        stbtt_GetCodepointHMetrics(&info, static_cast<int>(cp), &adv, &lsb);
-        int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
-        stbtt_GetCodepointBitmapBox(&info, static_cast<int>(cp), s, s, &x0, &y0, &x1, &y1);
-        Glyph g{x1 - x0, y1 - y0, x0, y0, adv * s, nullptr};
-        const size_t bytes = static_cast<size_t>(g.w > 0 ? g.w : 0) * (g.h > 0 ? g.h : 0);
-        if (bytes > 0 && g_pool_used + bytes <= sizeof g_pool)
+        for (unsigned probe = 0; probe < table_size; ++probe)
         {
-            std::uint8_t *bits = g_pool + g_pool_used;
-            stbtt_MakeCodepointBitmap(&info, bits, g.w, g.h, g.w, s, s, static_cast<int>(cp));
-            g_pool_used += bytes;
-            g.bits = bits;
+            Entry &e = g_table[(h + probe) & (table_size - 1)];
+            if (e.used && e.cp == cp && e.px == px && e.face == face)
+                return &e.g;
+            if (e.used)
+                continue;
+
+            const stbtt_fontinfo &info = g_faces[face].info;
+            const float s = scale(face, px);
+            int adv = 0, lsb = 0;
+            stbtt_GetCodepointHMetrics(&info, static_cast<int>(cp), &adv, &lsb);
+            int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+            stbtt_GetCodepointBitmapBox(&info, static_cast<int>(cp), s, s, &x0, &y0, &x1, &y1);
+            Glyph g{x1 - x0, y1 - y0, x0, y0, adv * s, nullptr};
+            const size_t bytes = static_cast<size_t>(g.w > 0 ? g.w : 0) * (g.h > 0 ? g.h : 0);
+            if (bytes > 0 && g_pool_used + bytes > sizeof g_pool && pass == 0 && g_pool_used > 0)
+                break; // the pool is full: start again with an empty cache
+            if (bytes > 0 && g_pool_used + bytes <= sizeof g_pool)
+            {
+                std::uint8_t *bits = g_pool + g_pool_used;
+                stbtt_MakeCodepointBitmap(&info, bits, g.w, g.h, g.w, s, s, static_cast<int>(cp));
+                g_pool_used += bytes;
+                g.bits = bits;
+            }
+            e = Entry{true, static_cast<std::uint8_t>(face), static_cast<std::uint16_t>(px), cp, g};
+            return &e.g;
         }
-        e = Entry{true, static_cast<std::uint8_t>(face), static_cast<std::uint16_t>(px), cp, g};
-        return &e.g;
+        // Full (the table, or the pool): forget every glyph and make them
+        // again as they're drawn. No one keeps a Glyph across calls, so this
+        // is safe; it costs a few slow frames, once in a long while.
+        memset(g_table, 0, sizeof g_table);
+        g_pool_used = 0;
     }
-    return nullptr; // table full
+    return nullptr;
 }
 
 float kern(Face face, int px, std::uint32_t left, std::uint32_t right) noexcept
@@ -153,11 +163,26 @@ float cap_height(Face face, int px) noexcept
 
 std::uint32_t next(const char *s, int len, int &at) noexcept
 {
+    constexpr std::uint32_t unknown = 0xfffd; // the "replacement character"
     const auto b = static_cast<unsigned char>(s[at++]);
-    int extra = b >= 0xF0 ? 3 : b >= 0xE0 ? 2 : b >= 0xC0 ? 1 : 0;
-    std::uint32_t cp = extra == 3 ? b & 7U : extra == 2 ? b & 15U : extra == 1 ? b & 31U : b;
-    for (; extra > 0 && at < len; --extra)
+    if (b < 0x80)
+        return b;
+    // A lead byte: 1 to 3 more bytes follow. Anything else here (a stray
+    // continuation byte, text that isn't UTF-8) is one unknown character.
+    if (b < 0xc2 || b > 0xf4)
+        return unknown;
+    const int extra = b >= 0xf0 ? 3 : b >= 0xe0 ? 2 : 1;
+    std::uint32_t cp = b & (0x3fU >> extra);
+    for (int i = 0; i < extra; ++i)
+    {
+        // Not a continuation byte: unknown, and that byte starts the next one.
+        if (at >= len || (static_cast<unsigned char>(s[at]) & 0xc0) != 0x80)
+            return unknown;
         cp = cp << 6 | (static_cast<unsigned char>(s[at++]) & 63U);
+    }
+    static constexpr std::uint32_t smallest[] = {0, 0x80, 0x800, 0x10000};
+    if (cp < smallest[extra] || (cp >= 0xd800 && cp <= 0xdfff) || cp > 0x10ffff)
+        return unknown; // too long a form, or not a character
     return cp;
 }
 } // namespace starter::font

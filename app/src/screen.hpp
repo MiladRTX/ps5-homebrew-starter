@@ -49,8 +49,9 @@ using Draw = void (*)(Canvas &) noexcept;
 // returns true. Never returns: the system closes the app.
 [[noreturn]] void run(Update update, Draw draw) noexcept;
 
-// For building on a PC: draws one frame and writes it as a PPM image.
-void preview(Draw draw, const char *ppm_path) noexcept;
+// For building on a PC: draws one frame and writes it as a PPM image. False
+// when the file couldn't be written.
+bool preview(Draw draw, const char *ppm_path) noexcept;
 
 // PC builds only (the preview and the simulator): the last frame drawn, row
 // by row, as 0xAABBGGRR pixels; and that frame written as a PPM image.
@@ -58,7 +59,8 @@ void preview(Draw draw, const char *ppm_path) noexcept;
 bool write_ppm(const char *path) noexcept;
 
 // Draws into a plain buffer in RAM; run() copies it to the screen. Opacity is
-// 0..255, sizes are pixels at 1920x1080, shapes are antialiased and clipped.
+// 0..255 (less is 0, more is 255), sizes are pixels at 1920x1080, shapes are
+// antialiased and clipped.
 class Canvas final
 {
   public:
@@ -78,18 +80,19 @@ class Canvas final
     // Fills from the polyline down to floor_y, fading from alpha_top at its
     // highest point to nothing at floor_y.
     void fill_under(const float *xy, int n, int floor_y, Color c, int alpha_top) noexcept;
+    // Dashes dash long with gap between; dash <= 0 or gap < 0 draws a plain line.
     void dashed_h(int x0, int x1, int y, int thick, int dash, int gap, Color c,
                   int alpha = 255) noexcept;
     void dashed_v(int x, int y0, int y1, int thick, int dash, int gap, Color c,
                   int alpha = 255) noexcept;
-    // A picture (image.hpp) scaled to w x h at x, y: smooth both ways (averaged
-    // when shrunk, blended between pixels when enlarged), with its own
-    // transparency, times alpha.
+    // A picture (image.hpp) scaled to w x h at x, y: smooth both ways (each
+    // side averaged when shrunk, blended between pixels when enlarged), with
+    // its own transparency, times alpha.
     void image(int x, int y, int w, int h, const image::Image &picture, int alpha = 255) noexcept;
     // An icon: c painted through a w x h coverage mask (0..255, row by row).
     void icon(int x, int y, int w, int h, const std::uint8_t *cover, Color c, int alpha = 255) noexcept;
-    // Text with its baseline at y; tracking in em (CSS letter-spacing). Returns
-    // the width drawn.
+    // Text with its baseline at y, px from 1 to font::max_px; tracking in em
+    // (CSS letter-spacing). Returns the width drawn, the same as text_width().
     float text(float x, float y, std::string_view s, font::Face face, int px, Color c,
                int alpha = 255, float tracking = 0) noexcept;
     [[nodiscard]] static float text_width(std::string_view s, font::Face face, int px,
@@ -98,7 +101,7 @@ class Canvas final
   private:
     Canvas() noexcept = default;
     friend void run(Update update, Draw draw) noexcept;
-    friend void preview(Draw draw, const char *ppm_path) noexcept;
+    friend bool preview(Draw draw, const char *ppm_path) noexcept;
 };
 
 // Milliseconds since some fixed point, for timing.

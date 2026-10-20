@@ -62,25 +62,27 @@ Touch g_script_touch{};
 // ---- The keyboard -----------------------------------------------------------
 unsigned keyboard() noexcept
 {
+    // By the letter on the key, whatever the keyboard layout: Z is Square on
+    // a QWERTZ or AZERTY keyboard too.
     static const struct
     {
-        SDL_Scancode key;
+        SDL_Keycode key;
         unsigned bit;
     } keys[] = {
-        {SDL_SCANCODE_UP, up},           {SDL_SCANCODE_DOWN, down},
-        {SDL_SCANCODE_LEFT, left},       {SDL_SCANCODE_RIGHT, right},
-        {SDL_SCANCODE_X, cross},         {SDL_SCANCODE_RETURN, cross},
-        {SDL_SCANCODE_C, circle},        {SDL_SCANCODE_BACKSPACE, circle},
-        {SDL_SCANCODE_Z, square},        {SDL_SCANCODE_V, triangle},
-        {SDL_SCANCODE_Q, l1},            {SDL_SCANCODE_E, r1},
-        {SDL_SCANCODE_1, l2},            {SDL_SCANCODE_3, r2},
-        {SDL_SCANCODE_TAB, options},     {SDL_SCANCODE_F, l3},
-        {SDL_SCANCODE_G, r3},
+        {SDLK_UP, up},           {SDLK_DOWN, down},
+        {SDLK_LEFT, left},       {SDLK_RIGHT, right},
+        {SDLK_x, cross},         {SDLK_RETURN, cross},
+        {SDLK_c, circle},        {SDLK_BACKSPACE, circle},
+        {SDLK_z, square},        {SDLK_v, triangle},
+        {SDLK_q, l1},            {SDLK_e, r1},
+        {SDLK_1, l2},            {SDLK_3, r2},
+        {SDLK_TAB, options},     {SDLK_f, l3},
+        {SDLK_g, r3},
     };
     const Uint8 *state = SDL_GetKeyboardState(nullptr);
     unsigned held = 0;
     for (const auto &k : keys)
-        if (state[k.key])
+        if (state[SDL_GetScancodeFromKey(k.key)])
             held |= k.bit;
     return held;
 }
@@ -169,7 +171,9 @@ int bridge_port() noexcept
 
 void bridge_listen() noexcept
 {
-    const int fd = socket(AF_INET, SOCK_STREAM, 0);
+    // Close-on-exec: the PC service the app starts must not inherit the
+    // port, or it would hold it after the simulator closes.
+    const int fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
     if (fd < 0)
         return;
     const int one = 1;
@@ -199,10 +203,9 @@ void bridge_poll() noexcept
         return;
     if (g_client < 0)
     {
-        g_client = accept(g_listen, nullptr, nullptr);
+        g_client = accept4(g_listen, nullptr, nullptr, SOCK_NONBLOCK | SOCK_CLOEXEC);
         if (g_client < 0)
             return;
-        fcntl(g_client, F_SETFL, fcntl(g_client, F_GETFL) | O_NONBLOCK);
         g_buffered = 0;
         printf("simulator: controller bridge connected\n");
         fflush(stdout);

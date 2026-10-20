@@ -52,7 +52,6 @@ In WSL (or Linux):
 git clone https://github.com/MiladRTX/ps5-homebrew-starter.git
 cd ps5-homebrew-starter
 tools/setup.sh                      # compilers + the PS5 payload SDK, once
-tools/new-app.py "My App" PPSA12345 # make it yours: name, title ID, folders (chapter 11)
 make -C payload/hello               # payload/hello/hello.elf
 app/build.sh                        # build/app/PPSA99901 and its ZIP
 app/sim/run.sh                      # the app live in a window on your PC, no console needed
@@ -60,6 +59,10 @@ app/sim/run.sh                      # the app live in a window on your PC, no co
 
 Then load `hello.elf` with Payload Manager, and copy `build/app/PPSA99901` to
 `/data/homebrew/` on the console. The chapters below explain every step.
+
+To make it yours, run `tools/new-app.py "My App" PPSA<five digits>` with a
+title ID nobody else uses (chapter 11). The app folder is then
+`build/app/<your title ID>`.
 
 ![Hello PS5 in the PC simulator](docs/images/settings.png)
 
@@ -106,13 +109,15 @@ docs/                 the guide
   by **BlackBearReloaded** (GPL-3.0-or-later). It's included in [`kit/`](kit) as it
   is at commit `44ae1da`, with its own README and license; only its demo app's
   artwork and music are left out, since the starter has its own. One addition
-  comes from the kit's later version: `APP_IMPORT_STUBS`, for system functions
-  the SDK has no stubs for.
+  (2026-10-20, in `kit/Makefile` and `kit/tools/build.sh`, each marked) comes
+  from the kit's later version: `APP_IMPORT_STUBS`, for system functions the
+  SDK has no stubs for.
 - The on-screen keyboard and the sound output follow BlackBearReloaded's code
   in ProsperoStore (GPL-3.0-or-later).
 - Payloads build with the [PS5 payload SDK](https://github.com/ps5-payload-dev/sdk) by John Törnblom.
-- The app's renderer, fonts handling and controller code come from
-  [Breeze](https://github.com/MiladRTX/Breeze) by Milad.
+- The app's renderer comes from [Breeze](https://github.com/MiladRTX/Breeze) by
+  Milad, which built it on ps5-native-app-boilerplate's demo renderer by
+  BlackBearReloaded. The fonts handling and controller code come from Breeze too.
 - Fonts: [Inter](https://rsms.me/inter/) and [JetBrains Mono](https://www.jetbrains.com/lp/mono/),
   SIL Open Font License (licenses in `app/fonts/`).
 - Text and pictures: [stb_truetype and stb_image](https://github.com/nothings/stb) by Sean Barrett (public domain / MIT).

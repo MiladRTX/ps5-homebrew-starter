@@ -19,8 +19,13 @@ out=$repo/build/sim
 if [[ ${1:-} == stop ]]; then
     lock=$out/data/ps5-starter/service.lock
     pid=$(head -c 16 "$lock" 2>/dev/null | tr -dc 0-9 || true)
-    if [[ -n $pid ]] && kill "$pid" 2>/dev/null; then
+    # The pid only counts while a running service holds the file's lock: an
+    # old pid may belong to some other program by now.
+    if [[ -n $pid ]] && ! flock -n "$lock" true 2>/dev/null && kill "$pid" 2>/dev/null; then
         echo "Stopped the PC service (pid $pid)."
+    # No lock file (build/ deleted while it ran): by how the simulator starts it.
+    elif pkill -x -f 'app0/assets/service' 2>/dev/null; then
+        echo "Stopped the PC service."
     else
         echo "The PC service isn't running."
     fi
@@ -36,6 +41,7 @@ command -v sdl2-config >/dev/null || { echo "SDL2 is missing: run tools/setup.sh
 
 cxx=$(command -v clang++-18 || command -v clang++)
 cc=$(command -v clang-18 || command -v clang)
+rm -rf "$out/obj" # everything is compiled again: no old objects of renamed files
 mkdir -p "$out/obj" "$out/app0/assets/fonts" "$out/data"
 
 # 1. The service, built for the PC (payload/service/sim_stubs.c stands in for
@@ -44,18 +50,25 @@ mkdir -p "$out/obj" "$out/app0/assets/fonts" "$out/data"
     "$repo/payload/service/service.c" "$repo/payload/service/sim_stubs.c" \
     -o "$out/app0/assets/service"
 
-# 2. The app: every file in app/src except pad.cpp (the PS5's controller),
-#    plus the simulator's window and input from app/sim. Compiled in parallel.
+# 2. The app: every .c, .cc and .cpp in app/src (subfolders too, like the PS5
+#    build) except pad.cpp (the PS5's controller), plus the simulator's window,
+#    input, keyboard and sound from app/sim. Compiled in parallel.
 read -r -a sdl_cflags <<< "$(sdl2-config --cflags)"
 read -r -a sdl_libs <<< "$(sdl2-config --libs)"
 flags=(-DSTARTER_PREVIEW -DSTARTER_SIM -O2 -Wall -Wextra -I"$app/src" -I"$here"
        -I"$repo/payload/service" "${sdl_cflags[@]}")
+mapfile -d '' -t sources < <(
+    find "$app/src" -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' \) ! -name pad.cpp -print0
+    find "$here" -maxdepth 1 -name '*.cpp' -print0)
 pids=()
-"$cc" -std=c11 "${flags[@]}" -c "$app/src/stb_impl.c" -o "$out/obj/stb_impl.o" & pids+=($!)
-for src in "$app"/src/*.cpp "$here"/*.cpp; do
-    [[ $(basename "$src") == pad.cpp ]] && continue
-    "$cxx" -std=c++20 -fno-exceptions -fno-rtti "${flags[@]}" -c "$src" \
-        -o "$out/obj/$(basename "${src%.cpp}").o" & pids+=($!)
+for src in "${sources[@]}"; do
+    rel=${src#"$app/"}
+    object=$out/obj/${rel//\//_}.o # src/a/b.cpp -> src_a_b.cpp.o: no two files share one
+    if [[ $src == *.c ]]; then
+        "$cc" -std=c11 "${flags[@]}" -c "$src" -o "$object" & pids+=($!)
+    else
+        "$cxx" -std=c++20 -fno-exceptions -fno-rtti "${flags[@]}" -c "$src" -o "$object" & pids+=($!)
+    fi
 done
 for pid in "${pids[@]}"; do wait "$pid"; done
 "$cxx" "$out"/obj/*.o "${sdl_libs[@]}" -lm -o "$out/hello-ps5"
@@ -72,32 +85,61 @@ sdl_win_zip_sha256=6cf9706eefd0a4a06dc764007934d428afaf029fabdd408a9e646048c91e1
 start_bridge() {
     grep -qi microsoft /proc/version 2>/dev/null || return 0 # not WSL: SDL sees controllers itself
     [[ ${STARTER_SIM_CONTROLLER:-1} != 0 ]] || return 0
-    local py
-    py=$(command -v python.exe || command -v py.exe) || {
+    # Everything here is optional: a step that fails means keyboard only, never
+    # no simulator. Windows programs run from a Windows folder (C:\).
+    local win_c py= candidate path bits
+    win_c=$(wslpath -u 'C:\' 2>/dev/null) || win_c=/mnt/c
+    # Windows' Python: py.exe (python.org's launcher) first. A python.exe can be
+    # the Microsoft Store's stand-in that only says "Python was not found", so
+    # a candidate counts only if it really runs Python.
+    for candidate in py.exe python.exe python3.exe; do
+        path=$(command -v "$candidate") || continue
+        if (cd "$win_c" && "$path" -c 'import sys' </dev/null >/dev/null 2>&1); then
+            py=$path
+            break
+        fi
+    done
+    [[ -n $py ]] || {
         echo "Controller bridge: no Python on Windows (python.org), so keyboard only."
         return 0
     }
+    # SDL2.dll below is the 64-bit x86 build: it needs a 64-bit x86 Python.
+    bits=$(cd "$win_c" && "$py" -c 'import platform, struct; print(struct.calcsize("P") * 8, platform.machine())' \
+        2>/dev/null | tr -d '\r') || bits=
+    [[ $bits == "64 AMD64" ]] || {
+        echo "Controller bridge: needs 64-bit x86 Python on Windows (found: ${bits:-unknown}), so keyboard only."
+        return 0
+    }
     # A Windows folder for it, so Windows can load the DLL: %LOCALAPPDATA%\ps5-starter.
+    # (Asked through PowerShell in UTF-8: cmd.exe would mangle a name like Müller.)
     local win_local dir
-    win_local=$(cd /mnt/c && cmd.exe /c "echo %LOCALAPPDATA%" 2>/dev/null | tr -d '\r')
-    [[ -n $win_local ]] || return 0
-    dir=$(wslpath "$win_local")/ps5-starter
-    mkdir -p "$dir"
+    win_local=$(cd "$win_c" && powershell.exe -NoProfile -NonInteractive -Command \
+        '[Console]::OutputEncoding=[Text.Encoding]::UTF8; [Environment]::GetFolderPath("LocalApplicationData")' \
+        2>/dev/null | tr -d '\r') || win_local=
+    [[ -n $win_local ]] || {
+        echo "Controller bridge: can't reach Windows from WSL, so keyboard only."
+        return 0
+    }
+    dir=$(wslpath -u "$win_local" 2>/dev/null)/ps5-starter || return 0
+    mkdir -p "$dir" 2>/dev/null || {
+        echo "Controller bridge: can't create $dir, so keyboard only."
+        return 0
+    }
     if [[ ! -f $dir/SDL2.dll ]]; then
         echo "Controller bridge: downloading SDL2.dll (SDL's official Windows build, once)..."
         local tmp
         tmp=$(mktemp -d)
         if curl -fsSL -o "$tmp/sdl2.zip" "$sdl_win_zip_url" &&
             echo "$sdl_win_zip_sha256  $tmp/sdl2.zip" | sha256sum -c --quiet; then
-            unzip -o -q -j "$tmp/sdl2.zip" SDL2.dll -d "$dir"
+            unzip -o -q -j "$tmp/sdl2.zip" SDL2.dll -d "$dir" || true # checked just below
         else
             echo "Controller bridge: SDL2.dll download failed or didn't match its checksum: keyboard only."
         fi
         rm -rf "$tmp"
         [[ -f $dir/SDL2.dll ]] || return 0
     fi
-    cp "$here/dualsense_bridge.py" "$dir/"
-    (cd /mnt/c && "$py" "$(wslpath -w "$dir/dualsense_bridge.py")" --sdl "$(wslpath -w "$dir/SDL2.dll")" \
+    cp "$here/dualsense_bridge.py" "$dir/" || return 0
+    (cd "$win_c" && "$py" "$(wslpath -w "$dir/dualsense_bridge.py")" --sdl "$(wslpath -w "$dir/SDL2.dll")" \
         --port "${STARTER_SIM_BRIDGE_PORT:-9278}" > "$out/bridge.log" 2>&1 &)
     echo "Controller bridge: started (build/sim/bridge.log). Turn your controller on any time."
 }
