@@ -1,0 +1,9 @@
+# Scripts and sources must keep Linux line endings, also when checked out on Windows.
+* text=auto eol=lf
+*.png binary
+*.ttf binary
+*.elf binary
+*.zip binary
+*.dds binary
+*.at9 binary
+*.prx binary
