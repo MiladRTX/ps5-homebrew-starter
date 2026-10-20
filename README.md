@@ -1,6 +1,6 @@
 # PS5 Homebrew Starter
 
-Everything you need to make your first PS5 homebrew: a payload (a program that
+Everything you need to make your first PS5: payload (a program that
 runs in the background) and an app (a title on the home screen), with a guide
 that takes you from an empty PC to both running on your console, and on to
 sharing them.
